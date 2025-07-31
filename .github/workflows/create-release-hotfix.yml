@@ -42,7 +42,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.REPO_PAT }}
 
       - name: Checkout target commit (release only)
         if: inputs.type == 'release'
@@ -65,21 +65,19 @@ jobs:
         run: |
           echo "🔍 Running semantic-release in dry-run mode to determine next version"
 
-          # Temporarily point main branch to our detached commit AND update remote tracking
-          CURRENT_SHA=$(git rev-parse HEAD)
-          echo "Current commit: $CURRENT_SHA"
+          # Create and push temporary branch for semantic-release dry-run
+          TEMP_BRANCH="temp-release-$(date +%s)"
 
-          # Force update main branch to point to our commit
-          git branch -f main $CURRENT_SHA
-          # Also update the remote tracking reference
-          git update-ref refs/remotes/origin/main $CURRENT_SHA
-          git checkout main
-          echo "Temporarily moved main branch and remote tracking to commit: $CURRENT_SHA"
+          git checkout -b "$TEMP_BRANCH"
+          git push origin "$TEMP_BRANCH"
+          echo "Created and pushed temporary branch: $TEMP_BRANCH"
 
-          # Run semantic-release with main branch
-          npx semantic-release --dry-run --no-ci --branches=main
+          # Run semantic-release with the temporary branch
+          npx semantic-release --dry-run --no-ci --branches="$TEMP_BRANCH"
 
-          echo "Semantic-release dry-run completed"
+          # Delete the temporary branch
+          git push origin --delete "$TEMP_BRANCH"
+          echo "Deleted temporary branch: $TEMP_BRANCH"
 
       - name: Parse version for branch naming (release only)
         if: inputs.type == 'release'
