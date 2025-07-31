@@ -10,14 +10,6 @@ on:
         options:
           - release
           - hotfix
-      commit_hash:
-        description: 'Commit hash to create release from (required for release)'
-        required: false
-        type: string
-      tag:
-        description: 'Tag to create hotfix from (required for hotfix, e.g. v1.2.0)'
-        required: false
-        type: string
 
 jobs:
   create-branch:
@@ -26,27 +18,11 @@ jobs:
       actions: write
     runs-on: ubuntu-latest
     steps:
-      - name: Validate inputs
-        run: |
-          if [ "${{ inputs.type }}" = "release" ] && [ -z "${{ inputs.commit_hash }}" ]; then
-            echo "❌ Commit hash is required for release type"
-            exit 1
-          fi
-
-          if [ "${{ inputs.type }}" = "hotfix" ] && [ -z "${{ inputs.tag }}" ]; then
-            echo "❌ Tag is required for hotfix type"
-            exit 1
-          fi
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.REPO_PAT }}
-
-      - name: Checkout target commit (release only)
-        if: inputs.type == 'release'
-        run: git checkout ${{ inputs.commit_hash }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -57,30 +33,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate branch name (release only)
-        if: inputs.type == 'release'
+      - name: Generate branch name
         id: branch_info
         run: |
           # Generate branch name with current date and short commit hash
           CURRENT_DATE=$(date +%Y-%m-%d)
           SHORT_SHA=$(git rev-parse --short HEAD)
-          BRANCH_NAME="release/v${CURRENT_DATE}-${SHORT_SHA}"
+
+          if [ "${{ inputs.type }}" = "release" ]; then
+            BRANCH_NAME="release/v${CURRENT_DATE}-${SHORT_SHA}"
+          else
+            BRANCH_NAME="hotfix/v${CURRENT_DATE}-${SHORT_SHA}"
+          fi
 
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
           echo "📝 Generated branch name: $BRANCH_NAME"
 
-      - name: Parse version from tag (hotfix only)
-        if: inputs.type == 'hotfix'
-        id: parse_version
-        run: |
-          TAG="${{ inputs.tag }}"
-          CURRENT_DATE=$(date +%Y-%m-%d)
-          BRANCH_NAME="hotfix/v${CURRENT_DATE}-${TAG}"
-          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
-          echo "📝 Generated branch name: $BRANCH_NAME"
-
-      - name: Check if branch already exists (release only)
-        if: inputs.type == 'release'
+      - name: Check if branch already exists
         run: |
           if git ls-remote --heads origin ${{ steps.branch_info.outputs.branch_name }} | grep -q refs; then
             echo "❌ Branch ${{ steps.branch_info.outputs.branch_name }} already exists"
@@ -88,18 +57,24 @@ jobs:
           fi
           echo "✅ Branch ${{ steps.branch_info.outputs.branch_name }} is available"
 
-      - name: Create release branch
-        if: inputs.type == 'release'
+      - name: Create branch
         run: |
           git checkout main
           git checkout -b ${{ steps.branch_info.outputs.branch_name }}
           git push origin ${{ steps.branch_info.outputs.branch_name }}
 
-      - name: Create hotfix branch
-        if: inputs.type == 'hotfix'
+      - name: Output branch details
         run: |
-          git checkout -b ${{ steps.parse_version.outputs.branch_name }} ${{ inputs.tag }}
-          git push origin ${{ steps.parse_version.outputs.branch_name }}
+          BRANCH_NAME="${{ steps.branch_info.outputs.branch_name }}"
+          echo "✅ ${{ inputs.type }} branch created: $BRANCH_NAME"
+          echo "📝 Created from current main branch"
+
+          echo ""
+          echo "🔄 Next steps:"
+          echo "1. Push commits to the branch will trigger release-versioning.yml"
+          echo "2. Semantic-release will run and create version/tag"
+          echo "3. If successful, a PR will be created automatically"
+          echo "4. Review and merge the PR to complete the release"
 
       - name: Output branch details
         run: |
