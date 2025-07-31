@@ -65,19 +65,19 @@ jobs:
         run: |
           echo "🔍 Running semantic-release in dry-run mode to determine next version"
 
-          # Create and push temporary branch for semantic-release dry-run
-          TEMP_BRANCH="temp-release-$(date +%s)"
+          # Temporarily point main branch to our detached commit
+          CURRENT_SHA=$(git rev-parse HEAD)
+          echo "Current commit: $CURRENT_SHA"
 
-          git checkout -b "$TEMP_BRANCH"
-          git push origin "$TEMP_BRANCH"
-          echo "Created and pushed temporary branch: $TEMP_BRANCH"
+          # Force update main branch to point to our commit
+          git branch -f main $CURRENT_SHA
+          git checkout main
+          echo "Temporarily moved main branch to commit: $CURRENT_SHA"
 
-          # Run semantic-release with the temporary branch
-          npx semantic-release --dry-run --no-ci --branches="$TEMP_BRANCH"
+          # Run semantic-release with main branch
+          npx semantic-release --dry-run --no-ci --branches=main
 
-          # Delete the temporary branch
-          git push origin --delete "$TEMP_BRANCH"
-          echo "Deleted temporary branch: $TEMP_BRANCH"
+          echo "Semantic-release dry-run completed"
 
       - name: Parse version for branch naming (release only)
         if: inputs.type == 'release'
