@@ -92,7 +92,7 @@ jobs:
         if: inputs.type == 'release'
         run: |
           git checkout main
-          git checkout -b ${{ steps.branch_info.outputs.branch_name }} ${{ inputs.commit_hash }}
+          git checkout -b ${{ steps.branch_info.outputs.branch_name }}
           git push origin ${{ steps.branch_info.outputs.branch_name }}
 
       - name: Create hotfix branch
@@ -101,46 +101,21 @@ jobs:
           git checkout -b ${{ steps.parse_version.outputs.branch_name }} ${{ inputs.tag }}
           git push origin ${{ steps.parse_version.outputs.branch_name }}
 
-      - name: Create Release Pull Request
-        if: inputs.type == 'release'
-        env:
-          GH_TOKEN: ${{ secrets.REPO_PAT }}
+      - name: Output branch details
         run: |
-          gh pr create \
-            --title "Release ${{ steps.branch_info.outputs.branch_name }}" \
-            --body "🚀 **Release branch ${{ steps.branch_info.outputs.branch_name }}**
+          if [ "${{ inputs.type }}" = "release" ]; then
+            BRANCH_NAME="${{ steps.branch_info.outputs.branch_name }}"
+            echo "✅ Release branch created: $BRANCH_NAME"
+            echo "📝 Created from commit: ${{ inputs.commit_hash }}"
+          else
+            BRANCH_NAME="${{ steps.parse_version.outputs.branch_name }}"
+            echo "✅ Hotfix branch created: $BRANCH_NAME"
+            echo "📝 Created from tag: ${{ inputs.tag }}"
+          fi
 
-          **Created from commit:** \`${{ inputs.commit_hash }}\`
-
-          ## What happens when you push to this branch:
-          1. 📝 Semantic-release updates package.json and changelog automatically
-          2. 🏷️ Semantic-release creates git tag automatically
-          3. ⏸️ Workflow pauses for manual approval in \`Release\` environment for GitHub release
-          4. ✅ After approval: GitHub release created pointing to the existing tag
-          5. 🔀 Ready to merge to main
-
-          **Tags are created automatically, but GitHub releases require approval!**" \
-            --base main \
-            --head ${{ steps.branch_info.outputs.branch_name }}
-
-      - name: Create Hotfix Pull Request
-        if: inputs.type == 'hotfix'
-        env:
-          GH_TOKEN: ${{ secrets.REPO_PAT }}
-        run: |
-          gh pr create \
-            --title "Hotfix ${{ steps.parse_version.outputs.branch_name }}" \
-            --body "🔥 **Hotfix branch ${{ steps.parse_version.outputs.branch_name }}**
-
-          **Created from tag:** \`${{ inputs.tag }}\`
-
-          ## What happens when you push to this branch:
-          1. 📝 Semantic-release updates package.json and changelog automatically
-          2. 🏷️ Semantic-release creates git tag automatically
-          3. ⏸️ Workflow pauses for manual approval in \`Release\` environment for GitHub release
-          4. ✅ After approval: GitHub release created pointing to the existing tag
-          5. 🔀 Ready to merge to main
-
-          **Tags are created automatically, but GitHub releases require approval!**" \
-            --base main \
-            --head ${{ steps.parse_version.outputs.branch_name }}
+          echo ""
+          echo "� Next steps:"
+          echo "1. Push commits to the branch will trigger release-versioning.yml"
+          echo "2. Semantic-release will run and create version/tag"
+          echo "3. If successful, a PR will be created automatically"
+          echo "4. Review and merge the PR to complete the release"
