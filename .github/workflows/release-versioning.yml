@@ -79,7 +79,7 @@ jobs:
       - name: Run semantic-release
         id: semrel
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.REPO_PAT }}
         run: |
           echo "🏷️ Running semantic-release (version, changelog, and tagging)"
           npx semantic-release --debug
@@ -107,7 +107,7 @@ jobs:
 
       - name: Create Pull Request
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.REPO_PAT }}
         run: |
           CURRENT_BRANCH="${{ github.ref_name }}"
           VERSION="${{ needs.version-and-tag.outputs.version }}"
@@ -185,7 +185,7 @@ jobs:
 
       - name: Create GitHub Release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.REPO_PAT }}
         run: |
           TAG_NAME="${{ needs.version-and-tag.outputs.tag_name }}"
 
