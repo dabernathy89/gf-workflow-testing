@@ -67,13 +67,16 @@ jobs:
           git checkout -b "$TEMP_BRANCH"
           echo "Created temporary branch: $TEMP_BRANCH"
 
+          # Temporarily remove remote to avoid remote branch checks
+          git remote remove origin
+          echo "Temporarily removed remote origin"
+
           # Run semantic-release with the temporary branch
           npx semantic-release --dry-run --no-ci --branches="$TEMP_BRANCH"
 
-          # Clean up temporary branch
-          git checkout --detach HEAD
-          git branch -d "$TEMP_BRANCH"
-          echo "Cleaned up temporary branch"
+          # Re-add the remote for subsequent steps
+          git remote add origin https://github.com/${{ github.repository }}.git
+          echo "Re-added remote origin"
 
       - name: Parse version for branch naming (release only)
         if: inputs.type == 'release'
