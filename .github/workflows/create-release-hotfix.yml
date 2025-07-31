@@ -57,81 +57,43 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Determine next version with semantic-release (release only)
+      - name: Generate branch name (release only)
         if: inputs.type == 'release'
-        id: semrel
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: branch_info
         run: |
-          echo "🔍 Running semantic-release in dry-run mode to determine next version"
+          # Generate branch name with current date and short commit hash
+          CURRENT_DATE=$(date +%Y-%m-%d)
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          BRANCH_NAME="release/v${CURRENT_DATE}-${SHORT_SHA}"
 
-          # Create and push temporary branch for semantic-release dry-run
-          TEMP_BRANCH="temp-release-$(date +%s)"
-
-          git checkout -b "$TEMP_BRANCH"
-          git push origin "$TEMP_BRANCH"
-          echo "Created and pushed temporary branch: $TEMP_BRANCH"
-
-          # Run semantic-release with the temporary branch
-          npx semantic-release --dry-run --no-ci --branches=main
-
-          # Delete the temporary branch
-          git push origin --delete "$TEMP_BRANCH"
-          echo "Deleted temporary branch: $TEMP_BRANCH"
-
-      - name: Parse version for branch naming (release only)
-        if: inputs.type == 'release'
-        id: next_version
-        run: |
-          NEXT_VERSION="${{ steps.semrel.outputs.version }}"
-
-          if [ -z "$NEXT_VERSION" ]; then
-            echo "❌ No release needed - no relevant commits found since last release"
-            exit 1
-          fi
-
-          # Parse version for branch naming
-          IFS='.' read -ra VERSION_PARTS <<< "$NEXT_VERSION"
-          MAJOR=${VERSION_PARTS[0]}
-          MINOR=${VERSION_PARTS[1]}
-
-          BRANCH_NAME="release/v${MAJOR}.${MINOR}.x"
-          echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
-          echo "major_minor=${MAJOR}.${MINOR}" >> $GITHUB_OUTPUT
-
-          echo "✅ Next version will be: $NEXT_VERSION"
-          echo "📝 Branch name will be: $BRANCH_NAME"
+          echo "📝 Generated branch name: $BRANCH_NAME"
 
       - name: Parse version from tag (hotfix only)
         if: inputs.type == 'hotfix'
         id: parse_version
         run: |
           TAG="${{ inputs.tag }}"
-          VERSION=${TAG#v}  # Remove 'v' prefix
-          IFS='.' read -ra VERSION_PARTS <<< "$VERSION"
-          MAJOR=${VERSION_PARTS[0]}
-          MINOR=${VERSION_PARTS[1]}
-
-          BRANCH_NAME="hotfix/v${MAJOR}.${MINOR}.x"
+          CURRENT_DATE=$(date +%Y-%m-%d)
+          BRANCH_NAME="hotfix/v${CURRENT_DATE}-${TAG}"
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
-          echo "version=${MAJOR}.${MINOR}.x" >> $GITHUB_OUTPUT
+          echo "📝 Generated branch name: $BRANCH_NAME"
 
       - name: Check if branch already exists (release only)
         if: inputs.type == 'release'
         run: |
-          if git ls-remote --heads origin ${{ steps.next_version.outputs.branch_name }} | grep -q refs; then
-            echo "❌ Branch ${{ steps.next_version.outputs.branch_name }} already exists"
+          if git ls-remote --heads origin ${{ steps.branch_info.outputs.branch_name }} | grep -q refs; then
+            echo "❌ Branch ${{ steps.branch_info.outputs.branch_name }} already exists"
             exit 1
           fi
-          echo "✅ Branch ${{ steps.next_version.outputs.branch_name }} is available"
+          echo "✅ Branch ${{ steps.branch_info.outputs.branch_name }} is available"
 
       - name: Create release branch
         if: inputs.type == 'release'
         run: |
           git checkout main
-          git checkout -b ${{ steps.next_version.outputs.branch_name }} ${{ inputs.commit_hash }}
-          git push origin ${{ steps.next_version.outputs.branch_name }}
+          git checkout -b ${{ steps.branch_info.outputs.branch_name }} ${{ inputs.commit_hash }}
+          git push origin ${{ steps.branch_info.outputs.branch_name }}
 
       - name: Create hotfix branch
         if: inputs.type == 'hotfix'
@@ -145,10 +107,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr create \
-            --title "Release v${{ steps.next_version.outputs.major_minor }}.x" \
-            --body "🚀 **Release branch for v${{ steps.next_version.outputs.major_minor }}.x**
+            --title "Release ${{ steps.branch_info.outputs.branch_name }}" \
+            --body "🚀 **Release branch ${{ steps.branch_info.outputs.branch_name }}**
 
-          **Target version:** \`${{ steps.next_version.outputs.next_version }}\`
           **Created from commit:** \`${{ inputs.commit_hash }}\`
 
           ## What happens when you push to this branch:
@@ -160,7 +121,7 @@ jobs:
 
           **Tags are created automatically, but GitHub releases require approval!**" \
             --base main \
-            --head ${{ steps.next_version.outputs.branch_name }}
+            --head ${{ steps.branch_info.outputs.branch_name }}
 
       - name: Create Hotfix Pull Request
         if: inputs.type == 'hotfix'
@@ -168,8 +129,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr create \
-            --title "Hotfix ${{ steps.parse_version.outputs.version }}" \
-            --body "🔥 **Hotfix branch for v${{ steps.parse_version.outputs.version }}**
+            --title "Hotfix ${{ steps.parse_version.outputs.branch_name }}" \
+            --body "🔥 **Hotfix branch ${{ steps.parse_version.outputs.branch_name }}**
 
           **Created from tag:** \`${{ inputs.tag }}\`
 
