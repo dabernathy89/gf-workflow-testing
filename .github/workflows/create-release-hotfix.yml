@@ -65,19 +65,30 @@ jobs:
         run: |
           echo "🔍 Running semantic-release in dry-run mode to determine next version"
 
-          # Create and push temporary branch for semantic-release dry-run
+          # Create temporary branch using GitHub API
           TEMP_BRANCH="temp-release-$(date +%s)"
+          CURRENT_SHA=$(git rev-parse HEAD)
 
-          git checkout -b "$TEMP_BRANCH"
-          git push origin "$TEMP_BRANCH"
-          echo "Created and pushed temporary branch: $TEMP_BRANCH"
+          echo "Creating temporary branch: $TEMP_BRANCH at commit: $CURRENT_SHA"
+          curl --request POST \
+            --url https://api.github.com/repos/${{ github.repository }}/git/refs \
+            --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+            --header 'content-type: application/json' \
+            --data "{
+              \"ref\": \"refs/heads/$TEMP_BRANCH\",
+              \"sha\": \"$CURRENT_SHA\"
+            }" \
+            --fail
 
           # Run semantic-release with the temporary branch
           npx semantic-release --dry-run --no-ci --branches="$TEMP_BRANCH"
 
-          # Delete the temporary branch
-          git push origin --delete "$TEMP_BRANCH"
-          echo "Deleted temporary branch: $TEMP_BRANCH"
+          # Delete the temporary branch using GitHub API
+          echo "Deleting temporary branch: $TEMP_BRANCH"
+          curl --request DELETE \
+            --url https://api.github.com/repos/${{ github.repository }}/git/refs/heads/$TEMP_BRANCH \
+            --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+            --fail
 
       - name: Parse version for branch naming (release only)
         if: inputs.type == 'release'
