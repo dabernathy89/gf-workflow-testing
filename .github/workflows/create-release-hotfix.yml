@@ -104,7 +104,7 @@ jobs:
       - name: Create Release Pull Request
         if: inputs.type == 'release'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.REPO_PAT }}
         run: |
           gh pr create \
             --title "Release ${{ steps.branch_info.outputs.branch_name }}" \
@@ -126,7 +126,7 @@ jobs:
       - name: Create Hotfix Pull Request
         if: inputs.type == 'hotfix'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.REPO_PAT }}
         run: |
           gh pr create \
             --title "Hotfix ${{ steps.parse_version.outputs.branch_name }}" \
