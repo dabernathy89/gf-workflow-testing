@@ -14,9 +14,6 @@ jobs:
         run: echo "github.ref = ${{ github.ref }}"
 
       - name: Output github.event
-        run: echo "github.event = ${{ toJson(github.event) }}"
-
-      - name: Output github.event (pretty formatted)
         run: |
-          echo "github.event (formatted):"
+          echo "github.event:"
           echo '${{ toJson(github.event) }}' | jq '.'
