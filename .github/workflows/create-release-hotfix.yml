@@ -64,11 +64,6 @@ jobs:
 
           # Create and push temporary branch for semantic-release dry-run
           TEMP_BRANCH="temp-release-$(date +%s)"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          # Configure git to use the token for authentication
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
 
           git checkout -b "$TEMP_BRANCH"
           git push origin "$TEMP_BRANCH"
@@ -131,8 +126,6 @@ jobs:
       - name: Create release branch
         if: inputs.type == 'release'
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout main
           git checkout -b ${{ steps.next_version.outputs.branch_name }} ${{ inputs.commit_hash }}
           git push origin ${{ steps.next_version.outputs.branch_name }}
@@ -140,8 +133,6 @@ jobs:
       - name: Create hotfix branch
         if: inputs.type == 'hotfix'
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b ${{ steps.parse_version.outputs.branch_name }} ${{ inputs.tag }}
           git push origin ${{ steps.parse_version.outputs.branch_name }}
 
