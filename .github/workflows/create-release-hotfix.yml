@@ -73,7 +73,7 @@ jobs:
           echo "Created and pushed temporary branch: $TEMP_BRANCH"
 
           # Run semantic-release with the temporary branch
-          npx semantic-release --dry-run --no-ci --branches=main"
+          npx semantic-release --dry-run --no-ci --branches=main
 
           # Delete the temporary branch
           git push origin --delete "$TEMP_BRANCH"
