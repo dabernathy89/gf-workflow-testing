@@ -41,6 +41,10 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Checkout target commit (release only)
+        if: inputs.type == 'release'
+        run: git checkout ${{ inputs.commit_hash }}
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -49,10 +53,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Checkout target commit (release only)
-        if: inputs.type == 'release'
-        run: git checkout ${{ inputs.commit_hash }}
 
       - name: Determine next version with semantic-release (release only)
         if: inputs.type == 'release'
