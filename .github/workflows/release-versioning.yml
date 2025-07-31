@@ -61,6 +61,7 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false # <--- this
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -79,7 +80,7 @@ jobs:
       - name: Run semantic-release
         id: semrel
         env:
-          GITHUB_TOKEN: ${{ secrets.REPO_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "🏷️ Running semantic-release (version, changelog, and tagging)"
           npx semantic-release --debug
@@ -107,7 +108,7 @@ jobs:
 
       - name: Create Pull Request
         env:
-          GH_TOKEN: ${{ secrets.REPO_PAT }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           CURRENT_BRANCH="${{ github.ref_name }}"
           VERSION="${{ needs.version-and-tag.outputs.version }}"
@@ -185,7 +186,7 @@ jobs:
 
       - name: Create GitHub Release
         env:
-          GH_TOKEN: ${{ secrets.REPO_PAT }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG_NAME="${{ needs.version-and-tag.outputs.tag_name }}"
 
