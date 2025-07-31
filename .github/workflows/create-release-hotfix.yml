@@ -23,6 +23,7 @@ jobs:
   create-branch:
     permissions:
       contents: write
+      actions: write
     runs-on: ubuntu-latest
     steps:
       - name: Validate inputs
