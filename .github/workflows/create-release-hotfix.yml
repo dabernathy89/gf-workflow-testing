@@ -62,21 +62,20 @@ jobs:
         run: |
           echo "🔍 Running semantic-release in dry-run mode to determine next version"
 
-          # Create a temporary branch for semantic-release dry-run
+          # Create and push temporary branch for semantic-release dry-run
           TEMP_BRANCH="temp-release-$(date +%s)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$TEMP_BRANCH"
-          echo "Created temporary branch: $TEMP_BRANCH"
-
-          # Temporarily remove remote to avoid remote branch checks
-          git remote remove origin
-          echo "Temporarily removed remote origin"
+          git push origin "$TEMP_BRANCH"
+          echo "Created and pushed temporary branch: $TEMP_BRANCH"
 
           # Run semantic-release with the temporary branch
           npx semantic-release --dry-run --no-ci --branches="$TEMP_BRANCH"
 
-          # Re-add the remote for subsequent steps
-          git remote add origin https://github.com/${{ github.repository }}.git
-          echo "Re-added remote origin"
+          # Delete the temporary branch
+          git push origin --delete "$TEMP_BRANCH"
+          echo "Deleted temporary branch: $TEMP_BRANCH"
 
       - name: Parse version for branch naming (release only)
         if: inputs.type == 'release'
