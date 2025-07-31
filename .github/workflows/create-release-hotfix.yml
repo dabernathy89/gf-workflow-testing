@@ -1,0 +1,173 @@
+name: Create Release or Hotfix
+
+on:
+  workflow_dispatch:
+    inputs:
+      type:
+        description: 'Type of branch to create'
+        required: true
+        type: choice
+        options:
+          - release
+          - hotfix
+      commit_hash:
+        description: 'Commit hash to create release from (required for release)'
+        required: false
+        type: string
+      tag:
+        description: 'Tag to create hotfix from (required for hotfix, e.g. v1.2.0)'
+        required: false
+        type: string
+
+jobs:
+  create-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate inputs
+        run: |
+          if [ "${{ inputs.type }}" = "release" ] && [ -z "${{ inputs.commit_hash }}" ]; then
+            echo "❌ Commit hash is required for release type"
+            exit 1
+          fi
+
+          if [ "${{ inputs.type }}" = "hotfix" ] && [ -z "${{ inputs.tag }}" ]; then
+            echo "❌ Tag is required for hotfix type"
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Checkout target commit (release only)
+        if: inputs.type == 'release'
+        run: git checkout ${{ inputs.commit_hash }}
+
+      - name: Determine next version with semantic-release (release only)
+        if: inputs.type == 'release'
+        id: semrel
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🔍 Running semantic-release in dry-run mode to determine next version"
+          npx semantic-release --dry-run --no-ci
+
+      - name: Parse version for branch naming (release only)
+        if: inputs.type == 'release'
+        id: next_version
+        run: |
+          NEXT_VERSION="${{ steps.semrel.outputs.version }}"
+
+          if [ -z "$NEXT_VERSION" ]; then
+            echo "❌ No release needed - no relevant commits found since last release"
+            exit 1
+          fi
+
+          # Parse version for branch naming
+          IFS='.' read -ra VERSION_PARTS <<< "$NEXT_VERSION"
+          MAJOR=${VERSION_PARTS[0]}
+          MINOR=${VERSION_PARTS[1]}
+
+          BRANCH_NAME="release/v${MAJOR}.${MINOR}.x"
+          echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "major_minor=${MAJOR}.${MINOR}" >> $GITHUB_OUTPUT
+
+          echo "✅ Next version will be: $NEXT_VERSION"
+          echo "📝 Branch name will be: $BRANCH_NAME"
+
+      - name: Parse version from tag (hotfix only)
+        if: inputs.type == 'hotfix'
+        id: parse_version
+        run: |
+          TAG="${{ inputs.tag }}"
+          VERSION=${TAG#v}  # Remove 'v' prefix
+          IFS='.' read -ra VERSION_PARTS <<< "$VERSION"
+          MAJOR=${VERSION_PARTS[0]}
+          MINOR=${VERSION_PARTS[1]}
+
+          BRANCH_NAME="hotfix/v${MAJOR}.${MINOR}.x"
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "version=${MAJOR}.${MINOR}.x" >> $GITHUB_OUTPUT
+
+      - name: Check if branch already exists (release only)
+        if: inputs.type == 'release'
+        run: |
+          if git ls-remote --heads origin ${{ steps.next_version.outputs.branch_name }} | grep -q refs; then
+            echo "❌ Branch ${{ steps.next_version.outputs.branch_name }} already exists"
+            exit 1
+          fi
+          echo "✅ Branch ${{ steps.next_version.outputs.branch_name }} is available"
+
+      - name: Create release branch
+        if: inputs.type == 'release'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout main
+          git checkout -b ${{ steps.next_version.outputs.branch_name }} ${{ inputs.commit_hash }}
+          git push origin ${{ steps.next_version.outputs.branch_name }}
+
+      - name: Create hotfix branch
+        if: inputs.type == 'hotfix'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b ${{ steps.parse_version.outputs.branch_name }} ${{ inputs.tag }}
+          git push origin ${{ steps.parse_version.outputs.branch_name }}
+
+      - name: Create Release Pull Request
+        if: inputs.type == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --title "Release v${{ steps.next_version.outputs.major_minor }}.x" \
+            --body "🚀 **Release branch for v${{ steps.next_version.outputs.major_minor }}.x**
+
+          **Target version:** \`${{ steps.next_version.outputs.next_version }}\`
+          **Created from commit:** \`${{ inputs.commit_hash }}\`
+
+          ## What happens when you push to this branch:
+          1. 📝 Semantic-release updates package.json and changelog automatically
+          2. 🏷️ Semantic-release creates git tag automatically
+          3. ⏸️ Workflow pauses for manual approval in \`Release\` environment for GitHub release
+          4. ✅ After approval: GitHub release created pointing to the existing tag
+          5. 🔀 Ready to merge to main
+
+          **Tags are created automatically, but GitHub releases require approval!**" \
+            --base main \
+            --head ${{ steps.next_version.outputs.branch_name }}
+
+      - name: Create Hotfix Pull Request
+        if: inputs.type == 'hotfix'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --title "Hotfix ${{ steps.parse_version.outputs.version }}" \
+            --body "🔥 **Hotfix branch for v${{ steps.parse_version.outputs.version }}**
+
+          **Created from tag:** \`${{ inputs.tag }}\`
+
+          ## What happens when you push to this branch:
+          1. 📝 Semantic-release updates package.json and changelog automatically
+          2. 🏷️ Semantic-release creates git tag automatically
+          3. ⏸️ Workflow pauses for manual approval in \`Release\` environment for GitHub release
+          4. ✅ After approval: GitHub release created pointing to the existing tag
+          5. 🔀 Ready to merge to main
+
+          **Tags are created automatically, but GitHub releases require approval!**" \
+            --base main \
+            --head ${{ steps.parse_version.outputs.branch_name }}

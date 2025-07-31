@@ -1,0 +1,130 @@
+# Deployment workflow - always deploys to dev, conditionally to production
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+      - '.dockerignore'
+
+jobs:
+  check-for-production-deployment:
+    name: Check for Production Deployment
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy_prod: ${{ steps.check_tags.outputs.should_deploy_prod }}
+      production_version: ${{ steps.check_tags.outputs.production_version }}
+    steps:
+      - name: Dummy check for production deployment
+        id: check_tags
+        run: |
+          echo "Checking for approved releases..."
+
+          # Toggle this value to test both scenarios
+          DEPLOY_PROD="true"  # Change to "false" to test dev-only deployment
+
+          if [ "$DEPLOY_PROD" = "true" ]; then
+            echo "Found tag v1.2.3 - simulating production deployment approval"
+            echo "should_deploy_prod=true" >> $GITHUB_OUTPUT
+            echo "production_version=1.2.3" >> $GITHUB_OUTPUT
+            echo "✅ Production deployment approved for version 1.2.3"
+          else
+            echo "No approved releases found - dev deployment only"
+            echo "should_deploy_prod=false" >> $GITHUB_OUTPUT
+            echo "production_version=" >> $GITHUB_OUTPUT
+            echo "📦 Development deployment only"
+          fi
+
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    needs: check-for-production-deployment
+    steps:
+      - name: Dummy checkout and setup
+        run: echo "Simulating repository checkout and AWS configuration..."
+
+      - name: Dummy ECR login
+        id: login-ecr
+        run: |
+          echo "Logging into Amazon ECR..."
+          echo "registry=123456789.dkr.ecr.us-east-1.amazonaws.com" >> $GITHUB_OUTPUT
+          echo "✅ Successfully logged into ECR"
+
+      - name: Dummy image metadata preparation
+        id: image_meta
+        env:
+          SHOULD_DEPLOY_PROD: ${{ needs.check-for-production-deployment.outputs.should_deploy_prod }}
+          PRODUCTION_VERSION: ${{ needs.check-for-production-deployment.outputs.production_version }}
+        run: |
+          echo "Preparing Docker image metadata..."
+          timestamp=$(date +%s)
+
+          # Always create dev tag
+          dev_tag="some.ecr.url:dev-${timestamp}-abc1234"
+          tags="${dev_tag}"
+
+          # Add production tag if this is an approved release
+          if [ "$SHOULD_DEPLOY_PROD" = "true" ]; then
+            prod_tag="some.ecr.url:${PRODUCTION_VERSION}"
+            tags="${tags},${prod_tag}"
+            echo "🎯 Production deployment enabled - adding production tag: $prod_tag"
+          else
+            echo "📦 Development deployment only - no production tag"
+          fi
+
+          echo "tags=${tags}" >> $GITHUB_OUTPUT
+          echo "timestamp=${timestamp}" >> $GITHUB_OUTPUT
+          echo "dev_tag=${dev_tag}" >> $GITHUB_OUTPUT
+
+      - name: Dummy Docker build
+        run: |
+          echo "Setting up Docker buildx..."
+          echo "Building Docker image with multi-platform support..."
+          echo "📦 Image built successfully for linux/amd64"
+          echo "🔄 Loading image for asset extraction"
+
+      - name: Dummy asset publishing
+        run: |
+          echo "Extracting assets from Docker container..."
+          echo "Creating temporary container for asset extraction"
+          echo "Extracting /usr/share/nginx/html/ directory"
+          echo "Syncing assets to S3 bucket..."
+          echo "✅ Assets published to S3 successfully"
+          echo "🧹 Cleaned up temporary files"
+
+      - name: Dummy ECR image push
+        env:
+          SHOULD_DEPLOY_PROD: ${{ needs.check-for-production-deployment.outputs.should_deploy_prod }}
+          PRODUCTION_VERSION: ${{ needs.check-for-production-deployment.outputs.production_version }}
+        run: |
+          echo "Pushing images to Amazon ECR..."
+          echo "📤 Pushing dev tag: dev-$(date +%s)-abc1234"
+
+          if [ "$SHOULD_DEPLOY_PROD" = "true" ]; then
+            echo "📤 Pushing production tag: ${PRODUCTION_VERSION}"
+            echo "✅ Both dev and production images pushed successfully to ECR"
+          else
+            echo "⏭️ Skipping production tag push (no approved release)"
+            echo "✅ Dev image pushed successfully to ECR"
+          fi
+
+      - name: Dummy metadata update
+        env:
+          SHOULD_DEPLOY_PROD: ${{ needs.check-for-production-deployment.outputs.should_deploy_prod }}
+          PRODUCTION_VERSION: ${{ needs.check-for-production-deployment.outputs.production_version }}
+        run: |
+          echo "Updating environment metadata files..."
+          echo "📝 Updated dev metadata: devt-webapp-meta.json"
+          echo "📝 Updated staging metadata: stag-webapp-meta.json"
+
+          # Update production metadata only for approved releases
+          if [ "$SHOULD_DEPLOY_PROD" = "true" ]; then
+            echo "📝 Updated production metadata: prod-webapp-meta.json"
+            echo "✅ Updated production metadata for version ${PRODUCTION_VERSION}"
+          else
+            echo "⏭️ Skipping production metadata update (no approved release)"
+          fi
+

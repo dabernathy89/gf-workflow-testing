@@ -1,0 +1,140 @@
+# This workflow runs on release/hotfix branches and includes all CI steps before semantic-release
+name: Release Versioning
+
+on:
+  push:
+    branches:
+      - 'release/v**'
+      - 'hotfix/v**'
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dummy lint step 1
+        run: echo "Running lint check - all files pass linting!"
+      - name: Dummy lint step 2
+        run: echo "TypeScript compilation successful - no errors found!"
+      - name: Dummy lint step 3
+        run: echo "Code style validation complete - formatting looks good!"
+
+  unit-test:
+    name: Unit Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Dummy unit test step 1
+        run: echo "Running unit tests - 25 tests passed!"
+      - name: Dummy unit test step 2
+        run: echo "Code coverage 95% - exceeds minimum threshold!"
+      - name: Dummy unit test step 3
+        run: echo "All test suites completed successfully!"
+
+  ui-test:
+    name: UI Test
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dummy UI test step 1
+        run: echo "Starting browser automation tests..."
+      - name: Dummy UI test step 2
+        run: echo "Running Playwright tests - 15 scenarios passed!"
+      - name: Dummy UI test step 3
+        run: echo "UI test suite completed - all user flows working!"
+      - name: Dummy UI test step 4
+        run: echo "Generated test report and screenshots"
+
+  version-and-tag:
+    name: Version and Tag
+    runs-on: ubuntu-latest
+    needs:
+      - lint
+      - unit-test
+      - ui-test
+    outputs:
+      version: ${{ steps.semrel.outputs.version }}
+      tag_name: ${{ steps.create_tag.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Run semantic-release
+        id: semrel
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🏷️ Running semantic-release (version, changelog, and tagging)"
+          npx semantic-release --debug
+
+      - name: Create tag output
+        id: create_tag
+        if: steps.semrel.outputs.version
+        run: |
+          TAG_NAME="v${{ steps.semrel.outputs.version }}"
+          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "✅ Version: ${{ steps.semrel.outputs.version }}"
+          echo "🏷️ Tag created: $TAG_NAME"
+
+  create-github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: version-and-tag
+    if: needs.version-and-tag.outputs.version
+    environment: Release  # 🔑 Manual approval required here!
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="${{ needs.version-and-tag.outputs.tag_name }}"
+
+          # Check if release already exists
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            echo "⚠️ Release $TAG_NAME already exists, skipping release creation"
+            exit 0
+          fi
+
+          # Try to get changelog content for this version
+          CHANGELOG_CONTENT=""
+          if [ -f CHANGELOG.md ]; then
+            # Extract the section for this version from changelog
+            VERSION=${TAG_NAME#v}  # Remove 'v' prefix
+            CHANGELOG_CONTENT=$(awk "/^## \[?${VERSION}\]?|^## ${VERSION}[^0-9]/{flag=1; next} /^## \[?[0-9]/{flag=0} flag" CHANGELOG.md | sed '/^$/d' || echo "")
+          fi
+
+          if [ -z "$CHANGELOG_CONTENT" ]; then
+            # Fallback to auto-generated notes
+            gh release create "$TAG_NAME" \
+              --title "Release $TAG_NAME" \
+              --generate-notes
+          else
+            # Use changelog content
+            gh release create "$TAG_NAME" \
+              --title "Release $TAG_NAME" \
+              --notes "$CHANGELOG_CONTENT"
+          fi
+
+          echo "✅ GitHub release $TAG_NAME created successfully"
