@@ -61,7 +61,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "🔍 Running semantic-release in dry-run mode to determine next version"
-          npx semantic-release --dry-run --no-ci
+          CURRENT_BRANCH=$(git branch --show-current)
+          echo "Current branch for dry-run: $CURRENT_BRANCH"
+
+          # Override branches config to use current branch for dry-run
+          npx semantic-release --dry-run --no-ci --branches="$CURRENT_BRANCH"
 
       - name: Parse version for branch naming (release only)
         if: inputs.type == 'release'
