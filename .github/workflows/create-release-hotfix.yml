@@ -65,14 +65,16 @@ jobs:
         run: |
           echo "🔍 Running semantic-release in dry-run mode to determine next version"
 
-          # Temporarily point main branch to our detached commit
+          # Temporarily point main branch to our detached commit AND update remote tracking
           CURRENT_SHA=$(git rev-parse HEAD)
           echo "Current commit: $CURRENT_SHA"
 
           # Force update main branch to point to our commit
           git branch -f main $CURRENT_SHA
+          # Also update the remote tracking reference
+          git update-ref refs/remotes/origin/main $CURRENT_SHA
           git checkout main
-          echo "Temporarily moved main branch to commit: $CURRENT_SHA"
+          echo "Temporarily moved main branch and remote tracking to commit: $CURRENT_SHA"
 
           # Run semantic-release with main branch
           npx semantic-release --dry-run --no-ci --branches=main
