@@ -61,11 +61,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "🔍 Running semantic-release in dry-run mode to determine next version"
-          CURRENT_BRANCH=$(git branch --show-current)
-          echo "Current branch for dry-run: $CURRENT_BRANCH"
 
-          # Override branches config to use current branch for dry-run
-          npx semantic-release --dry-run --no-ci --branches="$CURRENT_BRANCH"
+          # Create a temporary branch for semantic-release dry-run
+          TEMP_BRANCH="temp-release-$(date +%s)"
+          git checkout -b "$TEMP_BRANCH"
+          echo "Created temporary branch: $TEMP_BRANCH"
+
+          # Run semantic-release with the temporary branch
+          npx semantic-release --dry-run --no-ci --branches="$TEMP_BRANCH"
+
+          # Clean up temporary branch
+          git checkout --detach HEAD
+          git branch -d "$TEMP_BRANCH"
+          echo "Cleaned up temporary branch"
 
       - name: Parse version for branch naming (release only)
         if: inputs.type == 'release'
