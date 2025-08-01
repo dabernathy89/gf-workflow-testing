@@ -235,7 +235,7 @@ jobs:
     name: Create GitHub Release
     runs-on: ubuntu-latest
     needs: [version-and-tag, create-pull-request]
-    if: needs.version-and-tag.outputs.version && needs.version-and-tag.outputs.is_hotfix == 'false'
+    if: needs.version-and-tag.outputs.version
     environment: Release  # 🔑 Manual approval required here!
     steps:
       - name: Checkout
@@ -248,6 +248,30 @@ jobs:
           GH_TOKEN: ${{ secrets.REPO_PAT }}
         run: |
           TAG_NAME="${{ needs.version-and-tag.outputs.tag_name }}"
+          IS_HOTFIX="${{ needs.version-and-tag.outputs.is_hotfix }}"
+
+          if [[ "$IS_HOTFIX" == "true" ]]; then
+            echo "🔥 Hotfix release process"
+            echo "📝 Expecting manual tag $TAG_NAME to have been created before approval"
+
+            # For hotfixes, check if tag exists first
+            if ! git tag -l | grep -q "^${TAG_NAME}$"; then
+              echo "❌ Tag $TAG_NAME not found!"
+              echo "Please create the tag manually before approving this workflow:"
+              echo ""
+              echo "Manual tagging commands:"
+              echo "  git checkout ${{ github.ref_name }}"
+              echo "  git pull origin ${{ github.ref_name }}"
+              echo "  git tag -a $TAG_NAME -m \"Hotfix $TAG_NAME\""
+              echo "  git push origin $TAG_NAME"
+              echo ""
+              echo "Then re-run this workflow or approve the pending environment."
+              exit 1
+            fi
+            echo "✅ Tag $TAG_NAME found for hotfix"
+          else
+            echo "🚀 Regular release process"
+          fi
 
           # Check if release already exists
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
@@ -255,77 +279,19 @@ jobs:
             exit 0
           fi
 
-          # Try to get changelog content for this version
-          CHANGELOG_CONTENT=""
-          if [ -f CHANGELOG.md ]; then
-            # Extract the section for this version from changelog
-            VERSION=${TAG_NAME#v}  # Remove 'v' prefix
-            CHANGELOG_CONTENT=$(awk "/^## \[?${VERSION}\]?|^## ${VERSION}[^0-9]/{flag=1; next} /^## \[?[0-9]/{flag=0} flag" CHANGELOG.md | sed '/^$/d' || echo "")
-          fi
-
-          if [ -z "$CHANGELOG_CONTENT" ]; then
-            # Fallback to auto-generated notes
+          # Create release with auto-generated notes
+          if [[ "$IS_HOTFIX" == "true" ]]; then
+            # Hotfix release
+            gh release create "$TAG_NAME" \
+              --title "Hotfix $TAG_NAME" \
+              --generate-notes \
+              --latest
+            echo "✅ GitHub hotfix release $TAG_NAME created successfully"
+          else
+            # Regular release
             gh release create "$TAG_NAME" \
               --title "Release $TAG_NAME" \
               --generate-notes
-          else
-            # Use changelog content
-            gh release create "$TAG_NAME" \
-              --title "Release $TAG_NAME" \
-              --notes "$CHANGELOG_CONTENT"
-          fi
-
-          echo "✅ GitHub release $TAG_NAME created successfully"
-
-  create-hotfix-release:
-    name: Create Hotfix GitHub Release
-    runs-on: ubuntu-latest
-    needs: [version-and-tag, create-pull-request]
-    if: needs.version-and-tag.outputs.version && needs.version-and-tag.outputs.is_hotfix == 'true'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Wait for manual tag and create release
-        env:
-          GH_TOKEN: ${{ secrets.REPO_PAT }}
-        run: |
-          TAG_NAME="${{ needs.version-and-tag.outputs.tag_name }}"
-
-          echo "🔥 Hotfix release process"
-          echo "⏳ This job will wait for the manual tag $TAG_NAME to be created"
-          echo "📝 Please follow the instructions in the PR to manually create the tag before merging"
-          echo ""
-          echo "Manual tagging command:"
-          echo "  git checkout ${{ github.ref_name }}"
-          echo "  git pull origin ${{ github.ref_name }}"
-          echo "  git tag -a $TAG_NAME -m \"Hotfix $TAG_NAME\""
-          echo "  git push origin $TAG_NAME"
-          echo ""
-          echo "⚠️  After the tag is created and PR is merged, create the GitHub release manually or"
-          echo "    re-run this workflow to automatically create the release."
-
-          # Check if tag exists
-          if git tag -l | grep -q "^${TAG_NAME}$"; then
-            echo "✅ Tag $TAG_NAME found, creating GitHub release"
-
-            # Check if release already exists
-            if gh release view "$TAG_NAME" >/dev/null 2>&1; then
-              echo "⚠️ Release $TAG_NAME already exists, skipping release creation"
-              exit 0
-            fi
-
-            # Create the release
-            RELEASE_NOTES="🔥 Hotfix release $TAG_NAME - This is a hotfix release addressing critical issues. See the pull request for details on the changes included in this hotfix."
-            gh release create "$TAG_NAME" \
-              --title "Hotfix $TAG_NAME" \
-              --notes "$RELEASE_NOTES" \
               --latest
-
-            echo "✅ GitHub hotfix release $TAG_NAME created successfully"
-          else
-            echo "⚠️ Tag $TAG_NAME not found. Please create the tag manually as instructed in the PR."
-            echo "The release will be created automatically once the tag exists."
+            echo "✅ GitHub release $TAG_NAME created successfully"
           fi
