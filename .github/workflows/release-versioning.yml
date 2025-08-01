@@ -54,7 +54,7 @@ jobs:
       - ui-test
     outputs:
       version: ${{ steps.semrel.outputs.version || steps.hotfix_version.outputs.version }}
-      tag_name: ${{ steps.create_tag.outputs.tag || steps.hotfix_tag.outputs.tag }}
+      tag_name: ${{ steps.create_tag.outputs.tag || steps.hotfix_version.outputs.tag }}
       is_hotfix: ${{ steps.check_branch.outputs.is_hotfix }}
     steps:
       - name: Checkout
@@ -111,28 +111,23 @@ jobs:
           echo "✅ Version: ${{ steps.semrel.outputs.version }}"
           echo "🏷️ Tag created: $TAG_NAME"
 
-      - name: Determine hotfix version with git-cliff
+      - name: Extract hotfix version from branch name
         id: hotfix_version
         if: steps.check_branch.outputs.is_hotfix == 'true'
-        uses: orhun/git-cliff-action@v4
-        with:
-          args: --bumped-version --tag-pattern "v[0-9]*"
-        env:
-          OUTPUT: GITHUB_OUTPUT
-
-      - name: Create hotfix tag output
-        id: hotfix_tag
-        if: steps.check_branch.outputs.is_hotfix == 'true'
         run: |
-          VERSION="${{ steps.hotfix_version.outputs.version }}"
-          if [ -n "$VERSION" ]; then
+          BRANCH_NAME="${{ github.ref_name }}"
+          # Extract version from branch name (e.g., hotfix/v2.2.1 -> 2.2.1)
+          VERSION=$(echo "$BRANCH_NAME" | sed 's/hotfix\/v//')
+
+          if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             TAG_NAME="v${VERSION}"
-            echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
             echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "🔥 Hotfix version determined: $VERSION"
+            echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+            echo "🔥 Hotfix version extracted: $VERSION"
             echo "🏷️ Hotfix tag to be created: $TAG_NAME"
           else
-            echo "❌ Failed to determine hotfix version"
+            echo "❌ Invalid version format in branch name: $BRANCH_NAME"
+            echo "Expected format: hotfix/vX.X.X"
             exit 1
           fi
 
