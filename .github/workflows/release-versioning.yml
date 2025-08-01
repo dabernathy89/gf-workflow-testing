@@ -181,8 +181,7 @@ jobs:
 
           ## ⚠️ Important Merge Instructions
           1. **First**: Create the GitHub release as described above
-          2. **Then**: Use either "Create a merge commit" or "Rebase and merge" (DO NOT use "Squash and merge")
-          3. This preserves the git tag on the correct commit for production deployment
+          2. **Then**: Use only "Create a merge commit" (DO NOT use "Squash and merge" or "Rebase and merge") to preserve the git tag on the correct commit for production deployment
 
           ## Post-Merge Actions
           The release will already be created from step 1 above.
@@ -208,7 +207,7 @@ jobs:
           - Changelog generated
 
           ## ⚠️ Important Merge Instructions
-          **DO NOT use "Squash and merge"** - Use either "Create a merge commit" or "Rebase and merge" to preserve the git tag on the correct commit for production deployment.
+          **DO NOT use "Squash and merge"** - Use only "Create a merge commit" (DO NOT use "Squash and merge" or "Rebase and merge") to preserve the git tag on the correct commit for production deployment.
 
           Ready for review and merge to main.
           EOF
