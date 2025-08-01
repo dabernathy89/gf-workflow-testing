@@ -1,5 +1,5 @@
-# Deployment workflow - always deploys to dev, conditionally to production
-name: Deploy
+# CI/CD workflow - runs tests then deploys, conditionally to production
+name: CI/CD
 
 on:
   push:
@@ -9,11 +9,58 @@ on:
       - 'README.md'
       - '.gitignore'
       - '.dockerignore'
+  pull_request:
+    branches:
+      - '**'
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+      - '.dockerignore'
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dummy lint step 1
+        run: echo "Running lint check - all files pass linting!"
+      - name: Dummy lint step 2
+        run: echo "TypeScript compilation successful - no errors found!"
+      - name: Dummy lint step 3
+        run: echo "Code style validation complete - formatting looks good!"
+
+  unit-test:
+    name: Unit Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Dummy unit test step 1
+        run: echo "Running unit tests - 25 tests passed!"
+      - name: Dummy unit test step 2
+        run: echo "Code coverage 95% - exceeds minimum threshold!"
+      - name: Dummy unit test step 3
+        run: echo "All test suites completed successfully!"
+
+  ui-test:
+    name: UI Test
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dummy UI test step 1
+        run: echo "Starting browser automation tests..."
+      - name: Dummy UI test step 2
+        run: echo "Running Playwright tests - 15 scenarios passed!"
+      - name: Dummy UI test step 3
+        run: echo "UI test suite completed - all user flows working!"
+      - name: Dummy UI test step 4
+        run: echo "Generated test report and screenshots"
+
   check-for-production-deployment:
     name: Check for Production Deployment
     runs-on: ubuntu-latest
+    # Only run deployment check on main branch pushes and after tests pass
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint, unit-test, ui-test]
     outputs:
       should_deploy_prod: ${{ steps.check_tags.outputs.should_deploy_prod }}
       production_version: ${{ steps.check_tags.outputs.production_version }}
@@ -49,7 +96,9 @@ jobs:
   deploy:
     name: Build and Deploy
     runs-on: ubuntu-latest
-    needs: check-for-production-deployment
+    # Only deploy on main branch pushes and after tests pass
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint, unit-test, ui-test, check-for-production-deployment]
     steps:
       - name: Dummy checkout and setup
         run: echo "Simulating repository checkout and AWS configuration..."
@@ -135,4 +184,3 @@ jobs:
           else
             echo "⏭️ Skipping production metadata update (no approved release)"
           fi
-
