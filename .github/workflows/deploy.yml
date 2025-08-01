@@ -18,24 +18,32 @@ jobs:
       should_deploy_prod: ${{ steps.check_tags.outputs.should_deploy_prod }}
       production_version: ${{ steps.check_tags.outputs.production_version }}
     steps:
-      - name: Dummy check for production deployment
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for production deployment
         id: check_tags
         run: |
-          echo "Checking for approved releases..."
+          echo "Checking for release tags on current commit..."
 
-          # Toggle this value to test both scenarios
-          DEPLOY_PROD="true"  # Change to "false" to test dev-only deployment
+          # Get current commit SHA
+          CURRENT_COMMIT=$(git rev-parse HEAD)
+          echo "Current commit: $CURRENT_COMMIT"
 
-          if [ "$DEPLOY_PROD" = "true" ]; then
-            echo "Found tag v1.2.3 - simulating production deployment approval"
+          # Check if current commit has a release tag (semantic version format)
+          RELEASE_TAG=$(git tag --points-at $CURRENT_COMMIT | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+
+          if [ -n "$RELEASE_TAG" ]; then
+            VERSION=${RELEASE_TAG#v}  # Remove 'v' prefix
             echo "should_deploy_prod=true" >> $GITHUB_OUTPUT
-            echo "production_version=1.2.3" >> $GITHUB_OUTPUT
-            echo "✅ Production deployment approved for version 1.2.3"
+            echo "production_version=$VERSION" >> $GITHUB_OUTPUT
+            echo "✅ Found release tag $RELEASE_TAG - production deployment approved"
           else
-            echo "No approved releases found - dev deployment only"
             echo "should_deploy_prod=false" >> $GITHUB_OUTPUT
             echo "production_version=" >> $GITHUB_OUTPUT
-            echo "📦 Development deployment only"
+            echo "📦 No release tag found - development deployment only"
           fi
 
   deploy:
