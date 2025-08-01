@@ -132,6 +132,9 @@ jobs:
           - Tag: $TAG_NAME
           - Changelog generated
 
+          ## ⚠️ Important Merge Instructions
+          **DO NOT use "Squash and merge"** - Use either "Create a merge commit" or "Rebase and merge" to preserve the git tag on the correct commit for production deployment.
+
           Ready for review and merge to main.
           EOF
           )
@@ -151,6 +154,9 @@ jobs:
           - Version: $VERSION
           - Tag: $TAG_NAME
           - Changelog generated
+
+          ## ⚠️ Important Merge Instructions
+          **DO NOT use "Squash and merge"** - Use either "Create a merge commit" or "Rebase and merge" to preserve the git tag on the correct commit for production deployment.
 
           Urgent hotfix - ready for review and merge to main.
           EOF
