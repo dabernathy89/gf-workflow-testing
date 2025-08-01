@@ -167,26 +167,25 @@ jobs:
 
           ## Changes
           - Hotfix for critical issue
-          - Version will be $VERSION once tagged
+          - Version will be $VERSION once released
 
-          ## 🚨 MANUAL TAGGING REQUIRED
-          **IMPORTANT:** Before merging this PR, you must manually create the git tag:
+          ## 🌐 GitHub Release Creation Required
+          **IMPORTANT:** Before merging this PR, create a GitHub release:
 
-          \`\`\`bash
-          # After the final commit is added to this PR:
-          git checkout $CURRENT_BRANCH
-          git pull origin $CURRENT_BRANCH
-          git tag -a $TAG_NAME -m "Hotfix $TAG_NAME"
-          git push origin $TAG_NAME
-          \`\`\`
+          1. **Go to**: [Create New Release](https://github.com/${{ github.repository }}/releases/new)
+          2. **Tag**: \`$TAG_NAME\` (create new tag)
+          3. **Target**: \`$CURRENT_BRANCH\` (select this branch)
+          4. **Title**: \`Hotfix $TAG_NAME\`
+          5. **Description**: Use auto-generated release notes
+          6. **Click**: "Publish release"
 
           ## ⚠️ Important Merge Instructions
-          1. **First**: Apply the git tag $TAG_NAME to the last commit in this PR
+          1. **First**: Create the GitHub release as described above
           2. **Then**: Use either "Create a merge commit" or "Rebase and merge" (DO NOT use "Squash and merge")
           3. This preserves the git tag on the correct commit for production deployment
 
           ## Post-Merge Actions
-          After merging, the GitHub release will be created automatically using the tag.
+          The release will already be created from step 1 above.
 
           Urgent hotfix - ready for review and merge to main.
           EOF
@@ -235,7 +234,7 @@ jobs:
     name: Create GitHub Release
     runs-on: ubuntu-latest
     needs: [version-and-tag, create-pull-request]
-    if: needs.version-and-tag.outputs.version
+    if: needs.version-and-tag.outputs.version && needs.version-and-tag.outputs.is_hotfix == 'false'
     environment: Release  # 🔑 Manual approval required here!
     steps:
       - name: Checkout
@@ -248,30 +247,8 @@ jobs:
           GH_TOKEN: ${{ secrets.REPO_PAT }}
         run: |
           TAG_NAME="${{ needs.version-and-tag.outputs.tag_name }}"
-          IS_HOTFIX="${{ needs.version-and-tag.outputs.is_hotfix }}"
 
-          if [[ "$IS_HOTFIX" == "true" ]]; then
-            echo "🔥 Hotfix release process"
-            echo "📝 Expecting manual tag $TAG_NAME to have been created before approval"
-
-            # For hotfixes, check if tag exists first
-            if ! git tag -l | grep -q "^${TAG_NAME}$"; then
-              echo "❌ Tag $TAG_NAME not found!"
-              echo "Please create the tag manually before approving this workflow:"
-              echo ""
-              echo "Manual tagging commands:"
-              echo "  git checkout ${{ github.ref_name }}"
-              echo "  git pull origin ${{ github.ref_name }}"
-              echo "  git tag -a $TAG_NAME -m \"Hotfix $TAG_NAME\""
-              echo "  git push origin $TAG_NAME"
-              echo ""
-              echo "Then re-run this workflow or approve the pending environment."
-              exit 1
-            fi
-            echo "✅ Tag $TAG_NAME found for hotfix"
-          else
-            echo "🚀 Regular release process"
-          fi
+          echo "🚀 Regular release process"
 
           # Check if release already exists
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
@@ -280,18 +257,8 @@ jobs:
           fi
 
           # Create release with auto-generated notes
-          if [[ "$IS_HOTFIX" == "true" ]]; then
-            # Hotfix release
-            gh release create "$TAG_NAME" \
-              --title "Hotfix $TAG_NAME" \
-              --generate-notes \
-              --latest
-            echo "✅ GitHub hotfix release $TAG_NAME created successfully"
-          else
-            # Regular release
-            gh release create "$TAG_NAME" \
-              --title "Release $TAG_NAME" \
-              --generate-notes
-              --latest
-            echo "✅ GitHub release $TAG_NAME created successfully"
-          fi
+          gh release create "$TAG_NAME" \
+            --title "Release $TAG_NAME" \
+            --generate-notes \
+            --latest
+          echo "✅ GitHub release $TAG_NAME created successfully"
