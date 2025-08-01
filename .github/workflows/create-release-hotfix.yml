@@ -10,6 +10,10 @@ on:
         options:
           - release
           - hotfix
+      commit_sha:
+        description: 'Commit SHA to create branch from (optional, defaults to main)'
+        required: false
+        type: string
 
 jobs:
   create-branch:
@@ -99,8 +103,27 @@ jobs:
       - name: Create branch
         run: |
           BRANCH_NAME="${{ steps.final_vars.outputs.branch_name }}"
-          git checkout main
-          git checkout -b "$BRANCH_NAME"
+          BRANCH_TYPE="${{ inputs.type }}"
+
+          if [ "$BRANCH_TYPE" = "release" ]; then
+            # For releases, allow custom commit or use main
+            COMMIT_SHA="${{ inputs.commit_sha }}"
+            git checkout main
+
+            if [ -n "$COMMIT_SHA" ]; then
+              echo "📍 Creating release branch from commit: $COMMIT_SHA"
+              git checkout -b "$BRANCH_NAME" "$COMMIT_SHA"
+            else
+              echo "📍 Creating release branch from main"
+              git checkout -b "$BRANCH_NAME"
+            fi
+          else
+            # For hotfixes, always use the latest release tag
+            LATEST_TAG=$(git tag -l "v*.*.*" | sort -V | tail -1)
+            echo "📍 Creating hotfix branch from latest release tag: $LATEST_TAG"
+            git checkout -b "$BRANCH_NAME" "$LATEST_TAG"
+          fi
+
           git push origin "$BRANCH_NAME"
 
       - name: Output success message
@@ -109,7 +132,19 @@ jobs:
           BRANCH_TYPE="${{ inputs.type }}"
 
           echo "✅ $BRANCH_TYPE branch created: $BRANCH_NAME"
-          echo "📝 Created from current main branch"
+
+          if [ "$BRANCH_TYPE" = "release" ]; then
+            COMMIT_SHA="${{ inputs.commit_sha }}"
+            if [ -n "$COMMIT_SHA" ]; then
+              echo "� Created from commit: $COMMIT_SHA"
+            else
+              echo "📍 Created from main branch"
+            fi
+          else
+            LATEST_TAG=$(git tag -l "v*.*.*" | sort -V | tail -1)
+            echo "📍 Created from latest release tag: $LATEST_TAG"
+          fi
+
           echo ""
 
           if [ "$BRANCH_TYPE" = "release" ]; then
