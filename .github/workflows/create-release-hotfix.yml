@@ -89,7 +89,7 @@ jobs:
           fi
 
           echo ""
-          echo "� Next steps:"
+          echo "Next steps:"
           echo "1. Push commits to the branch will trigger release-versioning.yml"
           echo "2. Semantic-release will run and create version/tag"
           echo "3. If successful, a PR will be created automatically"
