@@ -11,3 +11,5 @@
 ## another fix
 
 ## Feature A
+
+## Feature B
