@@ -9,3 +9,5 @@
 ## another feature
 
 ## another fix
+
+## Feature A
