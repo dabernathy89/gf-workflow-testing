@@ -33,64 +33,103 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate branch name
-        id: branch_info
+      - name: Generate release branch name
+        id: release_branch
+        if: inputs.type == 'release'
         run: |
-          # Generate branch name with current date and short commit hash
+          # For releases, use date-based naming
           CURRENT_DATE=$(date +%Y-%m-%d)
           SHORT_SHA=$(git rev-parse --short HEAD)
-
-          if [ "${{ inputs.type }}" = "release" ]; then
-            BRANCH_NAME="release/v${CURRENT_DATE}-${SHORT_SHA}"
-          else
-            BRANCH_NAME="hotfix/v${CURRENT_DATE}-${SHORT_SHA}"
-          fi
-
+          BRANCH_NAME="release/v${CURRENT_DATE}-${SHORT_SHA}"
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
-          echo "📝 Generated branch name: $BRANCH_NAME"
+          echo "📝 Generated release branch name: $BRANCH_NAME"
+
+      - name: Check for existing release tags (hotfix only)
+        if: inputs.type == 'hotfix'
+        run: |
+          # For hotfixes, check that we have existing tags
+          LATEST_TAG=$(git tag -l "v*.*.*" | sort -V | tail -1)
+          if [ -z "$LATEST_TAG" ]; then
+            echo "❌ No previous release tags found. Cannot determine hotfix version."
+            echo "Please create a release first, or manually specify a hotfix version."
+            exit 1
+          fi
+          echo "📍 Latest release tag: $LATEST_TAG"
+          echo "🔍 Will use git-cliff action to determine next version..."
+
+      - name: Determine hotfix version
+        id: git_cliff
+        if: inputs.type == 'hotfix'
+        uses: orhun/git-cliff-action@v4
+        with:
+          args: --bumped-version --tag-pattern "v[0-9]*"
+
+      - name: Generate hotfix branch name
+        id: hotfix_branch
+        if: inputs.type == 'hotfix'
+        run: |
+          NEXT_VERSION="${{ steps.git_cliff.outputs.version }}"
+
+          BRANCH_NAME="hotfix/v${NEXT_VERSION}"
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+          echo "🔥 Generated hotfix branch name: $BRANCH_NAME"
+          echo "🏷️ Target hotfix version: v$NEXT_VERSION"
+
+      - name: Set final branch variables
+        id: final_vars
+        run: |
+          if [ "${{ inputs.type }}" = "release" ]; then
+            echo "branch_name=${{ steps.release_branch.outputs.branch_name }}" >> $GITHUB_OUTPUT
+            echo "next_version=" >> $GITHUB_OUTPUT
+          else
+            echo "branch_name=${{ steps.hotfix_branch.outputs.branch_name }}" >> $GITHUB_OUTPUT
+            echo "next_version=${{ steps.hotfix_branch.outputs.next_version }}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Check if branch already exists
         run: |
-          if git ls-remote --heads origin ${{ steps.branch_info.outputs.branch_name }} | grep -q refs; then
-            echo "❌ Branch ${{ steps.branch_info.outputs.branch_name }} already exists"
+          BRANCH_NAME="${{ steps.final_vars.outputs.branch_name }}"
+          if git ls-remote --heads origin "$BRANCH_NAME" | grep -q refs; then
+            echo "❌ Branch $BRANCH_NAME already exists"
             exit 1
           fi
-          echo "✅ Branch ${{ steps.branch_info.outputs.branch_name }} is available"
+          echo "✅ Branch $BRANCH_NAME is available"
 
       - name: Create branch
         run: |
+          BRANCH_NAME="${{ steps.final_vars.outputs.branch_name }}"
           git checkout main
-          git checkout -b ${{ steps.branch_info.outputs.branch_name }}
-          git push origin ${{ steps.branch_info.outputs.branch_name }}
+          git checkout -b "$BRANCH_NAME"
+          git push origin "$BRANCH_NAME"
 
-      - name: Output branch details
+      - name: Output success message
         run: |
-          BRANCH_NAME="${{ steps.branch_info.outputs.branch_name }}"
-          echo "✅ ${{ inputs.type }} branch created: $BRANCH_NAME"
+          BRANCH_NAME="${{ steps.final_vars.outputs.branch_name }}"
+          BRANCH_TYPE="${{ inputs.type }}"
+
+          echo "✅ $BRANCH_TYPE branch created: $BRANCH_NAME"
           echo "📝 Created from current main branch"
-
           echo ""
-          echo "🔄 Next steps:"
-          echo "1. Push commits to the branch will trigger release-versioning.yml"
-          echo "2. Semantic-release will run and create version/tag"
-          echo "3. If successful, a PR will be created automatically"
-          echo "4. Review and merge the PR to complete the release"
 
-      - name: Output branch details
-        run: |
-          if [ "${{ inputs.type }}" = "release" ]; then
-            BRANCH_NAME="${{ steps.branch_info.outputs.branch_name }}"
-            echo "✅ Release branch created: $BRANCH_NAME"
-            echo "📝 Created from commit: ${{ inputs.commit_hash }}"
+          if [ "$BRANCH_TYPE" = "release" ]; then
+            echo "🚀 Release Branch Instructions:"
+            echo "1. Push commits to this branch to trigger release-versioning.yml"
+            echo "2. Semantic-release will run and create version/tag automatically"
+            echo "3. A PR will be created automatically when workflow completes"
+            echo "4. Review and merge the PR to complete the release"
           else
-            BRANCH_NAME="${{ steps.parse_version.outputs.branch_name }}"
-            echo "✅ Hotfix branch created: $BRANCH_NAME"
-            echo "📝 Created from tag: ${{ inputs.tag }}"
+            NEXT_VERSION="${{ steps.final_vars.outputs.next_version }}"
+            echo "🔥 Hotfix Branch Instructions:"
+            echo "1. Push your hotfix commits to this branch"
+            echo "2. A PR will be created with MANUAL TAGGING INSTRUCTIONS"
+            echo "3. ⚠️  IMPORTANT: You must manually create the release tag before merging the PR"
+            echo "4. Review and merge the PR using 'Create merge commit' or 'Rebase and merge'"
+            echo ""
+            echo "🏷️ Expected hotfix version: v$NEXT_VERSION"
+            echo "📋 Manual tag command (run before merging PR):"
+            echo "   git checkout $BRANCH_NAME"
+            echo "   git pull origin $BRANCH_NAME"
+            echo "   git tag -a v$NEXT_VERSION -m \"Hotfix v$NEXT_VERSION\""
+            echo "   git push origin v$NEXT_VERSION"
           fi
-
-          echo ""
-          echo "Next steps:"
-          echo "1. Push commits to the branch will trigger release-versioning.yml"
-          echo "2. Semantic-release will run and create version/tag"
-          echo "3. If successful, a PR will be created automatically"
-          echo "4. Review and merge the PR to complete the release"
