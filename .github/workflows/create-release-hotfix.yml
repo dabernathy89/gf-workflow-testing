@@ -59,20 +59,34 @@ jobs:
             exit 1
           fi
           echo "📍 Latest release tag: $LATEST_TAG"
-          echo "🔍 Will use git-cliff action to determine next version..."
+          echo "🔍 Will calculate next patch version automatically..."
 
       - name: Determine hotfix version
-        id: git_cliff
+        id: hotfix_version
         if: inputs.type == 'hotfix'
-        uses: orhun/git-cliff-action@v4
-        with:
-          args: --bump patch --bumped-version
+        run: |
+          # Get the latest release tag
+          LATEST_TAG=$(git tag -l "v*.*.*" | sort -V | tail -1)
+          echo "📍 Latest release tag: $LATEST_TAG"
+
+          # Extract version numbers (remove 'v' prefix)
+          VERSION_WITHOUT_V=${LATEST_TAG#v}
+
+          # Split version into parts
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_WITHOUT_V"
+
+          # Increment patch version for hotfix
+          NEXT_PATCH=$((PATCH + 1))
+          NEXT_VERSION="$MAJOR.$MINOR.$NEXT_PATCH"
+
+          echo "version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+          echo "🔍 Calculated next hotfix version: v$NEXT_VERSION"
 
       - name: Generate hotfix branch name
         id: hotfix_branch
         if: inputs.type == 'hotfix'
         run: |
-          NEXT_VERSION="${{ steps.git_cliff.outputs.version }}"
+          NEXT_VERSION="${{ steps.hotfix_version.outputs.version }}"
 
           BRANCH_NAME="hotfix/v${NEXT_VERSION}"
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
