@@ -66,7 +66,7 @@ jobs:
         if: inputs.type == 'hotfix'
         uses: orhun/git-cliff-action@v4
         with:
-          args: --bump patch --tag-pattern "v[0-9]*" --bumped-version
+          args: --bump patch --bumped-version
 
       - name: Generate hotfix branch name
         id: hotfix_branch
