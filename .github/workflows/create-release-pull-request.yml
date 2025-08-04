@@ -1,0 +1,110 @@
+name: Create Release Pull Request
+
+on:
+  push:
+    branches:
+      - 'release/v**'
+
+jobs:
+  version-and-tag:
+    name: Version and Tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.semrel.outputs.version }}
+      tag_name: ${{ steps.create_tag.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Run semantic-release
+        id: semrel
+        env:
+          GITHUB_TOKEN: ${{ secrets.REPO_PAT }}
+        run: |
+          echo "🏷️ Running semantic-release (version, changelog, and tagging)"
+          npx semantic-release --debug
+
+      - name: Create tag output for release
+        id: create_tag
+        if: steps.semrel.outputs.version
+        run: |
+          TAG_NAME="v${{ steps.semrel.outputs.version }}"
+          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "✅ Version: ${{ steps.semrel.outputs.version }}"
+          echo "🏷️ Tag created: $TAG_NAME"
+
+  create-pull-request:
+    name: Create Pull Request
+    runs-on: ubuntu-latest
+    needs: version-and-tag
+    if: needs.version-and-tag.outputs.version
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.REPO_PAT }}
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.REPO_PAT }}
+        run: |
+          CURRENT_BRANCH="${{ github.ref_name }}"
+          VERSION="${{ needs.version-and-tag.outputs.version }}"
+          TAG_NAME="${{ needs.version-and-tag.outputs.tag_name }}"
+
+          PR_TITLE="Release $TAG_NAME"
+          PR_BODY=$(cat << EOF
+          🚀 Release $TAG_NAME
+
+          This PR contains the release branch for version $VERSION.
+
+          ## Changes
+          - Version bumped to $VERSION
+          - Changelog updated
+          - Tag $TAG_NAME created
+
+          ## Semantic Release Output
+          - Version: $VERSION
+          - Tag: $TAG_NAME
+          - Changelog generated
+
+          ## ⚠️ Important Merge Instructions
+          **DO NOT use "Squash and merge"** - Use only "Create a merge commit" (DO NOT use "Squash and merge" or "Rebase and merge") to preserve the git tag on the correct commit for production deployment.
+
+          Ready for review and merge to main.
+          EOF
+          )
+
+          # Check if PR already exists
+          if gh pr view "$CURRENT_BRANCH" >/dev/null 2>&1; then
+            echo "⚠️ PR for branch $CURRENT_BRANCH already exists"
+            gh pr view "$CURRENT_BRANCH"
+          else
+            # Create the PR
+            gh pr create \
+              --title "$PR_TITLE" \
+              --body "$PR_BODY" \
+              --base main \
+              --head "$CURRENT_BRANCH"
+
+            echo "✅ Pull request created: $PR_TITLE"
+          fi

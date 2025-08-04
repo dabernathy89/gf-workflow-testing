@@ -1,0 +1,103 @@
+name: Create Hotfix Branch
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create-branch:
+    permissions:
+      contents: write
+      actions: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.REPO_PAT }}
+
+      - name: Check for existing release tags
+        run: |
+          # For hotfixes, check that we have existing tags
+          LATEST_TAG=$(git tag -l "v*.*.*" | sort -V | tail -1)
+          if [ -z "$LATEST_TAG" ]; then
+            echo "❌ No previous release tags found. Cannot determine hotfix version."
+            echo "Please create a release first, or manually specify a hotfix version."
+            exit 1
+          fi
+          echo "📍 Latest release tag: $LATEST_TAG"
+          echo "🔍 Will calculate next patch version automatically..."
+
+      - name: Determine hotfix version
+        id: hotfix_version
+        run: |
+          # Get the latest release tag
+          LATEST_TAG=$(git tag -l "v*.*.*" | sort -V | tail -1)
+          echo "📍 Latest release tag: $LATEST_TAG"
+
+          # Extract version numbers (remove 'v' prefix)
+          VERSION_WITHOUT_V=${LATEST_TAG#v}
+
+          # Split version into parts
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_WITHOUT_V"
+
+          # Increment patch version for hotfix
+          NEXT_PATCH=$((PATCH + 1))
+          NEXT_VERSION="$MAJOR.$MINOR.$NEXT_PATCH"
+
+          echo "version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+          echo "🔍 Calculated next hotfix version: v$NEXT_VERSION"
+
+      - name: Generate hotfix branch name
+        id: hotfix_branch
+        run: |
+          NEXT_VERSION="${{ steps.hotfix_version.outputs.version }}"
+
+          BRANCH_NAME="hotfix/v${NEXT_VERSION}"
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "🔥 Generated hotfix branch name: $BRANCH_NAME"
+          echo "🏷️ Target hotfix version: v$NEXT_VERSION"
+
+      - name: Check if branch already exists
+        run: |
+          BRANCH_NAME="${{ steps.hotfix_branch.outputs.branch_name }}"
+          if git ls-remote --heads origin "$BRANCH_NAME" | grep -q refs; then
+            echo "❌ Branch $BRANCH_NAME already exists"
+            exit 1
+          fi
+          echo "✅ Branch $BRANCH_NAME is available"
+
+      - name: Create branch
+        run: |
+          BRANCH_NAME="${{ steps.hotfix_branch.outputs.branch_name }}"
+          
+          # For hotfixes, always use the latest release tag
+          LATEST_TAG=$(git tag -l "v*.*.*" | sort -V | tail -1)
+          echo "📍 Creating hotfix branch from latest release tag: $LATEST_TAG"
+          git checkout -b "$BRANCH_NAME" "$LATEST_TAG"
+
+          git push origin "$BRANCH_NAME"
+
+      - name: Output success message
+        run: |
+          BRANCH_NAME="${{ steps.hotfix_branch.outputs.branch_name }}"
+          NEXT_VERSION="${{ steps.hotfix_version.outputs.version }}"
+          LATEST_TAG=$(git tag -l "v*.*.*" | sort -V | tail -1)
+
+          echo "✅ Hotfix branch created: $BRANCH_NAME"
+          echo "📍 Created from latest release tag: $LATEST_TAG"
+
+          echo ""
+          echo "🔥 Hotfix Branch Instructions:"
+          echo "1. Push your hotfix commits to this branch"
+          echo "2. The create-hotfix-pull-request.yml workflow will run and create a PR automatically"
+          echo "3. Create a GitHub release using the web UI:"
+          echo "   - Go to: https://github.com/${{ github.repository }}/releases/new"
+          echo "   - Tag: v$NEXT_VERSION"
+          echo "   - Target: $BRANCH_NAME (select this branch)"
+          echo "   - Title: Hotfix v$NEXT_VERSION"
+          echo "   - Description: Auto-generated release notes"
+          echo "4. After creating the release, merge the PR using 'Create merge commit'"
+          echo ""
+          echo "🏷️ Expected hotfix version: v$NEXT_VERSION"
+          echo "🌐 Release creation URL: https://github.com/${{ github.repository }}/releases/new"

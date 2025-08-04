@@ -1,5 +1,5 @@
-# CI workflow - runs tests on main branch pushes and pull requests
-name: CI
+# CI/CD workflow - runs tests on PRs and deploys to dev on main branch pushes
+name: CI/CD
 
 on:
   push:
@@ -54,3 +54,70 @@ jobs:
         run: echo "UI test suite completed - all user flows working!"
       - name: Dummy UI test step 4
         run: echo "Generated test report and screenshots"
+
+  dev-deploy:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: [lint, unit-test, ui-test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Dummy checkout and setup
+        run: echo "Simulating repository checkout and AWS configuration..."
+
+      - name: Dummy ECR login
+        id: login-ecr
+        run: |
+          echo "Logging into Amazon ECR..."
+          echo "registry=123456789.dkr.ecr.us-east-1.amazonaws.com" >> $GITHUB_OUTPUT
+          echo "✅ Successfully logged into ECR"
+
+      - name: Dummy image metadata preparation
+        id: image_meta
+        run: |
+          echo "Preparing Docker image metadata for development deployment..."
+          timestamp=$(date +%s)
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          
+          # Create dev tag
+          dev_tag="some.ecr.url:dev-${timestamp}-${SHORT_SHA}"
+          
+          echo "tags=${dev_tag}" >> $GITHUB_OUTPUT
+          echo "timestamp=${timestamp}" >> $GITHUB_OUTPUT
+          echo "dev_tag=${dev_tag}" >> $GITHUB_OUTPUT
+          echo "🌿 Development deployment - tag: $dev_tag"
+
+      - name: Dummy Docker build
+        run: |
+          echo "Setting up Docker buildx..."
+          echo "Building Docker image for development..."
+          echo "📦 Image built successfully for linux/amd64"
+          echo "🔄 Loading image for asset extraction"
+
+      - name: Dummy asset publishing
+        run: |
+          echo "Extracting assets from Docker container..."
+          echo "Creating temporary container for asset extraction"
+          echo "Extracting /usr/share/nginx/html/ directory"
+          echo "Syncing assets to S3 development bucket..."
+          echo "✅ Assets published to S3 development successfully"
+          echo "🧹 Cleaned up temporary files"
+
+      - name: Dummy ECR image push
+        run: |
+          echo "Pushing images to Amazon ECR..."
+          echo "📤 Pushing development tag"
+          echo "✅ Development image pushed successfully to ECR"
+
+      - name: Dummy metadata update
+        run: |
+          echo "Updating development metadata files..."
+          echo "📝 Updated development metadata: dev-webapp-meta.json"
+          echo "✅ Updated development metadata"
+
+      - name: Deployment summary
+        run: |
+          echo "🎉 Development deployment completed successfully!"
+          echo "🌿 Branch: main"
+          echo "📋 Commit: ${{ github.sha }}"
+          echo "🚀 Development deployment: ✅"
+          echo "🌍 Environment updated: Development"

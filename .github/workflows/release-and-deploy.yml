@@ -1,0 +1,197 @@
+# Combined workflow for GitHub release creation and deployment
+name: Release and Deploy
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+
+jobs:
+  create-github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    if: (startsWith(github.head_ref, 'release/v') || startsWith(github.head_ref, 'hotfix/v')) && github.event.pull_request.state == 'open'
+    environment: Release
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      tag_name: ${{ steps.get_version.outputs.tag_name }}
+      branch_type: ${{ steps.check_branch.outputs.branch_type }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Check branch type
+        id: check_branch
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+          if [[ "$BRANCH_NAME" == hotfix/* ]]; then
+            echo "branch_type=hotfix" >> $GITHUB_OUTPUT
+            echo "🔥 Detected hotfix branch: $BRANCH_NAME"
+          elif [[ "$BRANCH_NAME" == release/* ]]; then
+            echo "branch_type=release" >> $GITHUB_OUTPUT
+            echo "🚀 Detected release branch: $BRANCH_NAME"
+          else
+            echo "branch_type=unknown" >> $GITHUB_OUTPUT
+            echo "⚠️ Unknown branch type: $BRANCH_NAME"
+          fi
+
+      - name: Setup Node.js
+        if: steps.check_branch.outputs.branch_type == 'release'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      - name: Get version from package.json (release)
+        if: steps.check_branch.outputs.branch_type == 'release'
+        id: get_version_release
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG_NAME="v${VERSION}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "📦 Version from package.json: $VERSION"
+          echo "🏷️ Tag name: $TAG_NAME"
+
+      - name: Get version from branch name (hotfix)
+        if: steps.check_branch.outputs.branch_type == 'hotfix'
+        id: get_version_hotfix
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+          # Extract version from branch name (e.g., hotfix/v2.2.1 -> 2.2.1)
+          VERSION=$(echo "$BRANCH_NAME" | sed 's/hotfix\/v//')
+          TAG_NAME="v${VERSION}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "🔥 Hotfix version from branch: $VERSION"
+          echo "🏷️ Tag name: $TAG_NAME"
+
+      - name: Set final version outputs
+        id: get_version
+        run: |
+          if [ "${{ steps.check_branch.outputs.branch_type }}" = "release" ]; then
+            echo "version=${{ steps.get_version_release.outputs.version }}" >> $GITHUB_OUTPUT
+            echo "tag_name=${{ steps.get_version_release.outputs.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ steps.get_version_hotfix.outputs.version }}" >> $GITHUB_OUTPUT
+            echo "tag_name=${{ steps.get_version_hotfix.outputs.tag_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release (release only)
+        if: steps.check_branch.outputs.branch_type == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.REPO_PAT }}
+        run: |
+          TAG_NAME="${{ steps.get_version.outputs.tag_name }}"
+
+          echo "🚀 Creating GitHub release for release branch"
+
+          # Check if release already exists
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            echo "⚠️ Release $TAG_NAME already exists, skipping release creation"
+            exit 0
+          fi
+
+          # Check if tag exists
+          if ! git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "❌ Tag $TAG_NAME does not exist. Make sure the version-and-tag job has run successfully."
+            exit 1
+          fi
+
+          # Create release with auto-generated notes
+          gh release create "$TAG_NAME" \
+            --title "Release $TAG_NAME" \
+            --generate-notes \
+            --latest
+          echo "✅ GitHub release $TAG_NAME created successfully"
+
+      - name: Skip GitHub Release (hotfix)
+        if: steps.check_branch.outputs.branch_type == 'hotfix'
+        run: |
+          echo "🔥 Hotfix detected - GitHub release should be created manually before merging PR"
+          echo "ℹ️ Hotfix releases require manual creation as documented in the PR description"
+
+  deploy:
+    name: Build and Deploy to Production
+    runs-on: ubuntu-latest
+    needs: create-github-release
+    steps:
+      - name: Dummy checkout and setup
+        run: echo "Simulating repository checkout and AWS configuration..."
+
+      - name: Dummy ECR login
+        id: login-ecr
+        run: |
+          echo "Logging into Amazon ECR..."
+          echo "registry=123456789.dkr.ecr.us-east-1.amazonaws.com" >> $GITHUB_OUTPUT
+          echo "✅ Successfully logged into ECR"
+
+      - name: Dummy image metadata preparation
+        id: image_meta
+        env:
+          VERSION: ${{ needs.create-github-release.outputs.version }}
+          BRANCH_TYPE: ${{ needs.create-github-release.outputs.branch_type }}
+        run: |
+          echo "Preparing Docker image metadata for production deployment..."
+          timestamp=$(date +%s)
+          BRANCH_NAME="${{ github.head_ref }}"
+
+          # Create production tag
+          prod_tag="some.ecr.url:${VERSION}"
+          tags="${prod_tag}"
+
+          echo "tags=${tags}" >> $GITHUB_OUTPUT
+          echo "timestamp=${timestamp}" >> $GITHUB_OUTPUT
+          echo "prod_tag=${prod_tag}" >> $GITHUB_OUTPUT
+          echo "🎯 Production deployment - tag: $prod_tag"
+          echo "🌿 Deploying from branch: $BRANCH_NAME"
+
+      - name: Dummy Docker build
+        run: |
+          echo "Setting up Docker buildx..."
+          echo "Building Docker image with multi-platform support..."
+          echo "📦 Image built successfully for linux/amd64"
+          echo "🔄 Loading image for asset extraction"
+
+      - name: Dummy asset publishing
+        run: |
+          echo "Extracting assets from Docker container..."
+          echo "Creating temporary container for asset extraction"
+          echo "Extracting /usr/share/nginx/html/ directory"
+          echo "Syncing assets to S3 production bucket..."
+          echo "✅ Assets published to S3 production successfully"
+          echo "🧹 Cleaned up temporary files"
+
+      - name: Dummy ECR image push
+        env:
+          VERSION: ${{ needs.create-github-release.outputs.version }}
+        run: |
+          echo "Pushing images to Amazon ECR..."
+          echo "📤 Pushing production tag: ${VERSION}"
+          echo "✅ Production image pushed successfully to ECR"
+
+      - name: Dummy metadata update
+        env:
+          VERSION: ${{ needs.create-github-release.outputs.version }}
+        run: |
+          echo "Updating production metadata files..."
+          echo "📝 Updated production metadata: prod-webapp-meta.json"
+          echo "✅ Updated production metadata for version ${VERSION}"
+
+      - name: Deployment summary
+        env:
+          VERSION: ${{ needs.create-github-release.outputs.version }}
+          BRANCH_TYPE: ${{ needs.create-github-release.outputs.branch_type }}
+        run: |
+          echo "🎉 Production deployment completed successfully!"
+          echo "🌿 Branch: ${{ github.head_ref }}"
+          echo "📋 Type: ${BRANCH_TYPE}"
+          echo "🚀 Production deployment: ✅ (version ${VERSION})"
+          echo "🌍 Environment updated: Production"
