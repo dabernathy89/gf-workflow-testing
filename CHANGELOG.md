@@ -1,3 +1,10 @@
+## [2.7.1](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.7.0...v2.7.1) (2025-08-05)
+
+
+### Bug Fixes
+
+* Fix N ([e34e4ec](https://github.com/dabernathy89/gf-workflow-testing/commit/e34e4ec1639288562b84f62efb69a380341a5e93))
+
 # [2.7.0](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.6.0...v2.7.0) (2025-08-05)
 
 
