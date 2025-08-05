@@ -61,9 +61,6 @@ jobs:
           - Changelog updated
           - Tag $TAG_NAME created
 
-          ## ⚠️ Important Merge Instructions
-          **DO NOT use "Squash and merge"** - Use only "Create a merge commit" (DO NOT use "Squash and merge" or "Rebase and merge") to preserve the git tag on the correct commit for production deployment.
-
           Ready for review and merge to main.
           EOF
           )
