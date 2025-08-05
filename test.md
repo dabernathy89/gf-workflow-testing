@@ -47,3 +47,5 @@
 ## Feature R
 
 ## Feature S
+
+## Hotfix v2.9.1
