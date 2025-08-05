@@ -19,6 +19,10 @@
             {
                 "name": "release/v*",
                 "prerelease": false
+            },
+            {
+                "name": "hotfix/v*",
+                "prerelease": false
             }
         ],
         "plugins": [
