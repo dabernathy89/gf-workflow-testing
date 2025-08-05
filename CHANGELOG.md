@@ -1,3 +1,10 @@
+# [2.6.0](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.5.1...v2.6.0) (2025-08-05)
+
+
+### Features
+
+* feature l ([c3dbce2](https://github.com/dabernathy89/gf-workflow-testing/commit/c3dbce286369ad485612d0a2629d6327844b3b27))
+
 # [2.5.0](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.4.0...v2.5.0) (2025-08-05)
 
 
