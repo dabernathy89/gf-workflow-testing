@@ -11,7 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.semrel.outputs.version }}
-      tag_name: ${{ steps.create_tag.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,15 +41,6 @@ jobs:
           echo "🏷️ Running semantic-release (version, changelog, and tagging)"
           npx semantic-release --debug
 
-      - name: Create tag output for release
-        id: create_tag
-        if: steps.semrel.outputs.version
-        run: |
-          TAG_NAME="v${{ steps.semrel.outputs.version }}"
-          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
-          echo "✅ Version: ${{ steps.semrel.outputs.version }}"
-          echo "🏷️ Tag created: $TAG_NAME"
-
       - name: Create Pull Request
         if: steps.semrel.outputs.version
         env:
@@ -58,7 +48,7 @@ jobs:
         run: |
           CURRENT_BRANCH="${{ github.ref_name }}"
           VERSION="${{ steps.semrel.outputs.version }}"
-          TAG_NAME="${{ steps.create_tag.outputs.tag }}"
+          TAG_NAME="v${{ steps.semrel.outputs.version }}"
 
           PR_TITLE="Release $TAG_NAME"
           PR_BODY=$(cat << EOF
@@ -108,7 +98,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.REPO_PAT }}
         run: |
-          TAG_NAME="${{ needs.version-tag-pull-request.outputs.tag_name }}"
+          TAG_NAME="v${{ needs.version-tag-pull-request.outputs.version }}"
 
           echo "🚀 Creating GitHub release for tag $TAG_NAME"
 
