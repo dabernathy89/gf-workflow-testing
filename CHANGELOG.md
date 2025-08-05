@@ -1,3 +1,10 @@
+## [2.3.1](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.3.0...v2.3.1) (2025-08-05)
+
+
+### Bug Fixes
+
+* doowhop ([9a9e9ac](https://github.com/dabernathy89/gf-workflow-testing/commit/9a9e9ac6f7f384fe7853973340dc90adc9bcd7a7))
+
 # [2.3.0](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.2.0...v2.3.0) (2025-08-05)
 
 
