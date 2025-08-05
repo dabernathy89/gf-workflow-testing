@@ -1,4 +1,4 @@
-name: Create Hotfix Pull Request
+name: Create Hotfix Release
 
 on:
   push:
