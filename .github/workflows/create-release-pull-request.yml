@@ -104,7 +104,8 @@ jobs:
               --title "$PR_TITLE" \
               --body "$PR_BODY" \
               --base main \
-              --head "$CURRENT_BRANCH"
+              --head "$CURRENT_BRANCH" \
+              --draft
 
             echo "✅ Pull request created: $PR_TITLE"
           fi
