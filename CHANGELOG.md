@@ -1,3 +1,10 @@
+## [2.11.1](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.11.0...v2.11.1) (2025-08-05)
+
+
+### Bug Fixes
+
+* add github release creation to hotfix process ([8d77a44](https://github.com/dabernathy89/gf-workflow-testing/commit/8d77a44db3882037bd5c0c1c81b990a1f3b1c7df))
+
 # [2.11.0](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.10.1...v2.11.0) (2025-08-05)
 
 
