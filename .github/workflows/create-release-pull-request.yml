@@ -64,48 +64,24 @@ jobs:
           token: ${{ secrets.REPO_PAT }}
 
       - name: Create Pull Request
-        env:
-          GH_TOKEN: ${{ secrets.REPO_PAT }}
-        run: |
-          CURRENT_BRANCH="${{ github.ref_name }}"
-          VERSION="${{ needs.version-and-tag.outputs.version }}"
-          TAG_NAME="${{ needs.version-and-tag.outputs.tag_name }}"
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.REPO_PAT }}
+          branch: ${{ github.ref_name }}
+          title: "Release ${{ needs.version-and-tag.outputs.tag_name }}"
+          body: |
+            🚀 Release ${{ needs.version-and-tag.outputs.tag_name }}
 
-          PR_TITLE="Release $TAG_NAME"
-          PR_BODY=$(cat << EOF
-          🚀 Release $TAG_NAME
+            This PR contains the release branch for version ${{ needs.version-and-tag.outputs.version }}.
 
-          This PR contains the release branch for version $VERSION.
+            ## Changes
+            - Version bumped to ${{ needs.version-and-tag.outputs.version }}
+            - Changelog updated
+            - Tag ${{ needs.version-and-tag.outputs.tag_name }} created
 
-          ## Changes
-          - Version bumped to $VERSION
-          - Changelog updated
-          - Tag $TAG_NAME created
+            ## ⚠️ Important Merge Instructions
+            **DO NOT use "Squash and merge"** - Use only "Create a merge commit" (DO NOT use "Squash and merge" or "Rebase and merge") to preserve the git tag on the correct commit for production deployment.
 
-          ## Semantic Release Output
-          - Version: $VERSION
-          - Tag: $TAG_NAME
-          - Changelog generated
-
-          ## ⚠️ Important Merge Instructions
-          **DO NOT use "Squash and merge"** - Use only "Create a merge commit" (DO NOT use "Squash and merge" or "Rebase and merge") to preserve the git tag on the correct commit for production deployment.
-
-          Ready for review and merge to main.
-          EOF
-          )
-
-          # Check if PR already exists
-          if gh pr view "$CURRENT_BRANCH" >/dev/null 2>&1; then
-            echo "⚠️ PR for branch $CURRENT_BRANCH already exists"
-            gh pr view "$CURRENT_BRANCH"
-          else
-            # Create the PR
-            gh pr create \
-              --title "$PR_TITLE" \
-              --body "$PR_BODY" \
-              --base main \
-              --head "$CURRENT_BRANCH" \
-              --draft
-
-            echo "✅ Pull request created: $PR_TITLE"
-          fi
+            Ready for review and merge to main.
+          base: main
+          draft: true
