@@ -74,3 +74,42 @@ jobs:
             Ready for review and merge to main.
           base: main
           draft: true
+
+  create-github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: version-tag-pull-request
+    if: needs.version-tag-pull-request.outputs.version
+    environment: Release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.REPO_PAT }}
+        run: |
+          TAG_NAME="${{ needs.version-tag-pull-request.outputs.tag_name }}"
+
+          echo "🚀 Creating GitHub release for tag $TAG_NAME"
+
+          # Check if release already exists
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            echo "⚠️ Release $TAG_NAME already exists, skipping release creation"
+            exit 0
+          fi
+
+          # Check if tag exists
+          if ! git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "❌ Tag $TAG_NAME does not exist. Make sure the version-tag-pull-request job has run successfully."
+            exit 1
+          fi
+
+          # Create release with auto-generated notes
+          gh release create "$TAG_NAME" \
+            --title "Release $TAG_NAME" \
+            --generate-notes \
+            --latest
+          echo "✅ GitHub release $TAG_NAME created successfully"

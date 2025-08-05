@@ -1,0 +1,124 @@
+# Manual deployment workflow for production
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      git_tag:
+        description: 'Git tag to deploy (e.g., v1.2.3)'
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    name: Build and Deploy to Production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate git tag
+        run: |
+          TAG="${{ inputs.git_tag }}"
+          echo "🏷️ Deploying git tag: $TAG"
+
+          # Validate tag format (should start with 'v' followed by semantic version)
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+.*$ ]]; then
+            echo "❌ Invalid tag format: $TAG"
+            echo "Tag should follow semantic versioning format (e.g., v1.2.3)"
+            exit 1
+          fi
+
+          echo "✅ Tag format is valid"
+
+      - name: Checkout tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_tag }}
+          fetch-depth: 0
+
+      - name: Verify tag exists
+        run: |
+          TAG="${{ inputs.git_tag }}"
+          if ! git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "❌ Tag $TAG does not exist in the repository"
+            exit 1
+          fi
+          echo "✅ Tag $TAG exists and is checked out"
+
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          TAG="${{ inputs.git_tag }}"
+          # Remove 'v' prefix to get version number
+          VERSION=$(echo "$TAG" | sed 's/^v//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Extracted version: $VERSION"
+
+      - name: Dummy checkout and setup
+        run: echo "Simulating repository checkout and AWS configuration..."
+
+      - name: Dummy ECR login
+        id: login-ecr
+        run: |
+          echo "Logging into Amazon ECR..."
+          echo "registry=123456789.dkr.ecr.us-east-1.amazonaws.com" >> $GITHUB_OUTPUT
+          echo "✅ Successfully logged into ECR"
+
+      - name: Dummy image metadata preparation
+        id: image_meta
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          echo "Preparing Docker image metadata for production deployment..."
+          timestamp=$(date +%s)
+          TAG_NAME="${{ inputs.git_tag }}"
+
+          # Create production tag
+          prod_tag="some.ecr.url:${VERSION}"
+          tags="${prod_tag}"
+
+          echo "tags=${tags}" >> $GITHUB_OUTPUT
+          echo "timestamp=${timestamp}" >> $GITHUB_OUTPUT
+          echo "prod_tag=${prod_tag}" >> $GITHUB_OUTPUT
+          echo "🎯 Production deployment - tag: $prod_tag"
+          echo "�️ Deploying from tag: $TAG_NAME"
+
+      - name: Dummy Docker build
+        run: |
+          echo "Setting up Docker buildx..."
+          echo "Building Docker image with multi-platform support..."
+          echo "📦 Image built successfully for linux/amd64"
+          echo "🔄 Loading image for asset extraction"
+
+      - name: Dummy asset publishing
+        run: |
+          echo "Extracting assets from Docker container..."
+          echo "Creating temporary container for asset extraction"
+          echo "Extracting /usr/share/nginx/html/ directory"
+          echo "Syncing assets to S3 production bucket..."
+          echo "✅ Assets published to S3 production successfully"
+          echo "🧹 Cleaned up temporary files"
+
+      - name: Dummy ECR image push
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          echo "Pushing images to Amazon ECR..."
+          echo "📤 Pushing production tag: ${VERSION}"
+          echo "✅ Production image pushed successfully to ECR"
+
+      - name: Dummy metadata update
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          echo "Updating production metadata files..."
+          echo "📝 Updated production metadata: prod-webapp-meta.json"
+          echo "✅ Updated production metadata for version ${VERSION}"
+
+      - name: Deployment summary
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          echo "🎉 Production deployment completed successfully!"
+          echo "�️ Tag: ${{ inputs.git_tag }}"
+          echo "� Version: ${VERSION}"
+          echo "🚀 Production deployment: ✅"
+          echo "🌍 Environment updated: Production"
