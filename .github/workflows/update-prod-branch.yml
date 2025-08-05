@@ -1,0 +1,109 @@
+# Automatically update prod branch to latest release tag on main branch merge
+name: Update Prod Branch
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  update-prod-branch:
+    name: Update Prod Branch to Latest Release Tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Get latest release tag
+        id: get_latest_tag
+        run: |
+          echo "🔍 Finding latest release tag..."
+
+          # Get all tags sorted by version, filter for release tags (vX.X.X format)
+          LATEST_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1)
+
+          if [ -z "$LATEST_TAG" ]; then
+            echo "❌ No release tags found matching pattern vX.X.X"
+            exit 1
+          fi
+
+          echo "✅ Latest release tag found: $LATEST_TAG"
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+
+          # Get the commit hash for this tag
+          TAG_COMMIT=$(git rev-list -n 1 "$LATEST_TAG")
+          echo "📋 Tag commit: $TAG_COMMIT"
+          echo "tag_commit=$TAG_COMMIT" >> $GITHUB_OUTPUT
+
+      - name: Check current prod branch
+        id: check_prod
+        run: |
+          echo "🔍 Checking current prod branch status..."
+
+          # Fetch the latest prod branch
+          git fetch origin prod:prod
+
+          # Get current prod branch commit
+          PROD_COMMIT=$(git rev-parse prod)
+          echo "📋 Current prod commit: $PROD_COMMIT"
+          echo "prod_commit=$PROD_COMMIT" >> $GITHUB_OUTPUT
+
+          # Check if prod is already pointing to the latest tag
+          TAG_COMMIT="${{ steps.get_latest_tag.outputs.tag_commit }}"
+          if [ "$PROD_COMMIT" = "$TAG_COMMIT" ]; then
+            echo "✅ Prod branch is already pointing to the latest release tag ${{ steps.get_latest_tag.outputs.latest_tag }}"
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+          else
+            echo "🔄 Prod branch needs to be updated to point to ${{ steps.get_latest_tag.outputs.latest_tag }}"
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update prod branch
+        if: steps.check_prod.outputs.needs_update == 'true'
+        env:
+          LATEST_TAG: ${{ steps.get_latest_tag.outputs.latest_tag }}
+        run: |
+          echo "🚀 Updating prod branch to point to $LATEST_TAG..."
+
+          # Switch to prod branch
+          git checkout prod
+
+          # Fast-forward merge to the latest tag
+          git merge --ff-only "$LATEST_TAG"
+
+          # Push the updated prod branch
+          git push origin prod
+
+          echo "✅ Successfully updated prod branch to $LATEST_TAG"
+
+      - name: Summary
+        run: |
+          echo "📊 Update Summary:"
+          echo "🏷️ Latest release tag: ${{ steps.get_latest_tag.outputs.latest_tag }}"
+          echo "🌿 Prod branch status: ${{ steps.check_prod.outputs.needs_update == 'true' && 'Updated' || 'Already up-to-date' }}"
+          echo "✅ Prod branch automation completed successfully!"
+
+      - name: Create summary comment
+        if: github.event_name == 'push'
+        run: |
+          echo "## 🏷️ Prod Branch Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Latest Release Tag:** \`${{ steps.get_latest_tag.outputs.latest_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Prod Branch Status:** ${{ steps.check_prod.outputs.needs_update == 'true' && '🔄 Updated' || '✅ Already up-to-date' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by:** Push to main branch" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.check_prod.outputs.needs_update }}" = "true" ]; then
+            echo "The \`prod\` branch has been automatically updated to point to the latest release tag." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "The \`prod\` branch was already pointing to the latest release tag." >> $GITHUB_STEP_SUMMARY
+          fi
