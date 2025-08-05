@@ -52,8 +52,17 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "📦 Extracted version: $VERSION"
 
-      - name: Dummy checkout and setup
-        run: echo "Simulating repository checkout and AWS configuration..."
+      - name: Debug - Print test.md content
+        run: |
+          echo "📋 Debug: Printing content of test.md for verification..."
+          if [ -f "test.md" ]; then
+            echo "✅ test.md exists, content:"
+            echo "--- BEGIN test.md ---"
+            cat test.md
+            echo "--- END test.md ---"
+          else
+            echo "❌ test.md not found in repository"
+          fi
 
       - name: Dummy ECR login
         id: login-ecr
