@@ -58,6 +58,8 @@ jobs:
             git checkout -b "$BRANCH_NAME"
           fi
 
+          git push origin "$BRANCH_NAME"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
