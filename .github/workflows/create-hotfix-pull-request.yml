@@ -53,37 +53,55 @@ jobs:
           token: ${{ secrets.REPO_PAT }}
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v7
-        with:
-          token: ${{ secrets.REPO_PAT }}
-          branch: ${{ github.ref_name }}
-          title: "Hotfix ${{ needs.version-and-tag.outputs.tag_name }}"
-          body: |
-            🔥 Hotfix ${{ needs.version-and-tag.outputs.tag_name }}
+        env:
+          GH_TOKEN: ${{ secrets.REPO_PAT }}
+        run: |
+          CURRENT_BRANCH="${{ github.ref_name }}"
+          VERSION="${{ needs.version-and-tag.outputs.version }}"
+          TAG_NAME="${{ needs.version-and-tag.outputs.tag_name }}"
 
-            This PR contains the hotfix branch for version ${{ needs.version-and-tag.outputs.version }}.
+          PR_TITLE="Hotfix $TAG_NAME"
+          PR_BODY=$(cat << EOF
+          🔥 Hotfix $TAG_NAME
 
-            ## Changes
-            - Hotfix for critical issue
-            - Version will be ${{ needs.version-and-tag.outputs.version }} once released
+          This PR contains the hotfix branch for version $VERSION.
 
-            ## 🌐 GitHub Release Creation Required
-            **IMPORTANT:** Before merging this PR, create a GitHub release:
+          ## Changes
+          - Hotfix for critical issue
+          - Version will be $VERSION once released
 
-            1. **Go to**: [Create New Release](https://github.com/${{ github.repository }}/releases/new)
-            2. **Tag**: `${{ needs.version-and-tag.outputs.tag_name }}` (create new tag)
-            3. **Target**: `${{ github.ref_name }}` (select this branch)
-            4. **Title**: `Hotfix ${{ needs.version-and-tag.outputs.tag_name }}`
-            5. **Description**: Use auto-generated release notes
-            6. **Click**: "Publish release"
+          ## 🌐 GitHub Release Creation Required
+          **IMPORTANT:** Before merging this PR, create a GitHub release:
 
-            ## ⚠️ Important Merge Instructions
-            1. **First**: Create the GitHub release as described above
-            2. **Then**: Use only "Create a merge commit" (DO NOT use "Squash and merge" or "Rebase and merge") to preserve the git tag on the correct commit for production deployment
+          1. **Go to**: [Create New Release](https://github.com/${{ github.repository }}/releases/new)
+          2. **Tag**: \`$TAG_NAME\` (create new tag)
+          3. **Target**: \`$CURRENT_BRANCH\` (select this branch)
+          4. **Title**: \`Hotfix $TAG_NAME\`
+          5. **Description**: Use auto-generated release notes
+          6. **Click**: "Publish release"
 
-            ## Post-Merge Actions
-            The release will already be created from step 1 above.
+          ## ⚠️ Important Merge Instructions
+          1. **First**: Create the GitHub release as described above
+          2. **Then**: Use only "Create a merge commit" (DO NOT use "Squash and merge" or "Rebase and merge") to preserve the git tag on the correct commit for production deployment
 
-            Urgent hotfix - ready for review and merge to main.
-          base: main
-          draft: true
+          ## Post-Merge Actions
+          The release will already be created from step 1 above.
+
+          Urgent hotfix - ready for review and merge to main.
+          EOF
+          )
+
+          # Check if PR already exists
+          if gh pr view "$CURRENT_BRANCH" >/dev/null 2>&1; then
+            echo "⚠️ PR for branch $CURRENT_BRANCH already exists"
+            gh pr view "$CURRENT_BRANCH"
+          else
+            # Create the PR
+            gh pr create \
+              --title "$PR_TITLE" \
+              --body "$PR_BODY" \
+              --base main \
+              --head "$CURRENT_BRANCH"
+
+            echo "✅ Pull request created: $PR_TITLE"
+          fi

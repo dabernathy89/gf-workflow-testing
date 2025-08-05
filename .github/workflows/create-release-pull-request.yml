@@ -52,27 +52,46 @@ jobs:
           echo "🏷️ Tag created: $TAG_NAME"
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v7
         if: steps.semrel.outputs.version
-        with:
-          token: ${{ secrets.REPO_PAT }}
-          branch: ${{ github.ref_name }}
-          title: "Release ${{ steps.create_tag.outputs.tag }}"
-          body: |
-            🚀 Release ${{ steps.create_tag.outputs.tag }}
+        env:
+          GH_TOKEN: ${{ secrets.REPO_PAT }}
+        run: |
+          CURRENT_BRANCH="${{ github.ref_name }}"
+          VERSION="${{ steps.semrel.outputs.version }}"
+          TAG_NAME="${{ steps.create_tag.outputs.tag }}"
 
-            This PR contains the release branch for version ${{ steps.semrel.outputs.version }}.
+          PR_TITLE="Release $TAG_NAME"
+          PR_BODY=$(cat << EOF
+          🚀 Release $TAG_NAME
 
-            ## Changes
-            - Version bumped to ${{ steps.semrel.outputs.version }}
-            - Changelog updated
-            - Tag ${{ steps.create_tag.outputs.tag }} created
+          This PR contains the release branch for version $VERSION.
 
-            ## ⚠️ Important Merge Instructions
-            **DO NOT use "Squash and merge"** - Use only "Create a merge commit" (DO NOT use "Squash and merge" or "Rebase and merge") to preserve the git tag on the correct commit for production deployment.
+          ## Changes
+          - Version bumped to $VERSION
+          - Changelog updated
+          - Tag $TAG_NAME created
 
-            Ready for review and merge to main.
-          base: main
+          ## ⚠️ Important Merge Instructions
+          **DO NOT use "Squash and merge"** - Use only "Create a merge commit" (DO NOT use "Squash and merge" or "Rebase and merge") to preserve the git tag on the correct commit for production deployment.
+
+          Ready for review and merge to main.
+          EOF
+          )
+
+          # Check if PR already exists
+          if gh pr view "$CURRENT_BRANCH" >/dev/null 2>&1; then
+            echo "⚠️ PR for branch $CURRENT_BRANCH already exists"
+            gh pr view "$CURRENT_BRANCH"
+          else
+            # Create the PR
+            gh pr create \
+              --title "$PR_TITLE" \
+              --body "$PR_BODY" \
+              --base main \
+              --head "$CURRENT_BRANCH"
+
+            echo "✅ Pull request created: $PR_TITLE"
+          fi
 
   create-github-release:
     name: Create GitHub Release
