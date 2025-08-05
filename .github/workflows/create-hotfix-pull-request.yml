@@ -17,7 +17,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.REPO_PAT }}
+          # By using the GITHUB_TOKEN, this workflow won't be triggered by itself
+          token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: false
 
       - name: Extract hotfix version from branch name
