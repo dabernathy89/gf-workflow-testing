@@ -35,3 +35,5 @@
 ## Feature L
 
 ## Feature M
+
+## Hotfix 2.7.1
