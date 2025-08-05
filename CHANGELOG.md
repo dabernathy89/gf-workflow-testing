@@ -1,3 +1,11 @@
+## [2.7.2](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.7.1...v2.7.2) (2025-08-05)
+
+
+### Bug Fixes
+
+* add hotfix to semantic release config ([dbbfa1a](https://github.com/dabernathy89/gf-workflow-testing/commit/dbbfa1ac56b7834fdff7e56270852987bcc4d7fa))
+* fix O ([83cc3a0](https://github.com/dabernathy89/gf-workflow-testing/commit/83cc3a00d9aadf54db679ef7fa75457ebd4c3bb2))
+
 ## [2.7.1](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.7.0...v2.7.1) (2025-08-05)
 
 
