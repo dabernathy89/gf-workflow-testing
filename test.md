@@ -61,3 +61,5 @@
 ## Feature W
 
 ## Feature X
+
+## Hotfix hotfix/v2.11.2
