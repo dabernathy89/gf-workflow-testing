@@ -1,3 +1,18 @@
+# [2.10.0](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.9.1...v2.10.0) (2025-08-05)
+
+
+### Bug Fixes
+
+* remove unnecessary instructions ([27c23a5](https://github.com/dabernathy89/gf-workflow-testing/commit/27c23a5df2c58c250e25a6528a5edcc9864f32dc))
+* rename create-hotfix-release workflow ([1a08f86](https://github.com/dabernathy89/gf-workflow-testing/commit/1a08f864541d11efbdc3a9c8c117e9080d0554f2))
+
+
+### Features
+
+* feature T ([e2f4fd5](https://github.com/dabernathy89/gf-workflow-testing/commit/e2f4fd5b9872c9a7f2153ae44e861a7da72f74c4))
+* feature U ([b240bac](https://github.com/dabernathy89/gf-workflow-testing/commit/b240bacfd0ec9e8de0990dc737dbcc4b717e210f))
+* feature V ([a5d3ffc](https://github.com/dabernathy89/gf-workflow-testing/commit/a5d3ffcfbadc97171b2879e14931631d339d6251))
+
 ## [2.9.1](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.9.0...v2.9.1) (2025-08-05)
 
 
