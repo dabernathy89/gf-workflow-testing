@@ -1,3 +1,11 @@
+## [2.10.1](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.10.0...v2.10.1) (2025-08-05)
+
+
+### Bug Fixes
+
+* hotfix 2.10.1 ([b3376c9](https://github.com/dabernathy89/gf-workflow-testing/commit/b3376c94bb14d37145b55a148762204c7dff7cc3))
+* made an oopsie ([73e562a](https://github.com/dabernathy89/gf-workflow-testing/commit/73e562af59d054e7c9ef2522e35c6d558b69b366))
+
 # [2.10.0](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.9.1...v2.10.0) (2025-08-05)
 
 
