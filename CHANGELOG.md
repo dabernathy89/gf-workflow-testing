@@ -1,3 +1,10 @@
+## [2.9.1](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.9.0...v2.9.1) (2025-08-05)
+
+
+### Bug Fixes
+
+* fixin' hot stuff ([89deca2](https://github.com/dabernathy89/gf-workflow-testing/commit/89deca2bf83e0cdf91e7e1916542ad71a52c9f78))
+
 # [2.9.0](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.8.0...v2.9.0) (2025-08-05)
 
 

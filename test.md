@@ -48,6 +48,8 @@
 
 ## Feature S
 
+## Hotfix v2.9.1
+
 ## Feature T
 
 ## Feature U
