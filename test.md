@@ -62,4 +62,4 @@
 
 ## Feature X
 
-## Hotfix hotfix/v2.11.2
+## Hotfix hotfix/v2.11.2 - oopsie!
