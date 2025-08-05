@@ -1,61 +1,94 @@
-# gf-workflow-testing
+# GitHub Workflow Testing Repository
 
-## GitHub Workflows Overview
+This repository demonstrates a comprehensive automated release management system using GitHub Actions, featuring semantic versioning, CI/CD pipelines, and deployment automation.
 
-This repository demonstrates an automated release management system with semantic versioning, CI/CD pipelines, and deployment automation using GitHub Actions.
+## Overview
 
-### Workflow Files
+The workflow system supports two types of releases:
+- **Regular Releases**: Cut from the main branch for new features and improvements
+- **Hotfixes**: Cut from the latest release tag for urgent fixes
 
-#### CI/CD Pipeline (`ci-cd.yml`)
-- **Triggers**: Pull requests to any branch + pushes to `main`
+Both processes use semantic versioning and automated deployments while maintaining clear separation between development and production environments.
+
+## Workflow Files
+
+### Continuous Integration (`ci-cd.yml`)
+- **Triggers**: All pull requests + pushes to `main` branch
 - **Jobs**:
-  - `lint`, `unit-test`, `ui-test` (run on all PRs)
-  - `dev-deploy` (only runs on pushes to main after tests pass)
-- **Purpose**: Continuous integration testing and automatic development environment deployment
+  - `lint`: Code quality checks
+  - `unit-test`: Automated unit testing
+  - `ui-test`: Browser automation tests
+  - `dev-deploy`: Automatic deployment to development environment (main branch only)
+- **Purpose**: Ensures code quality and automatically deploys successful main branch changes
 
-#### Release Branch Creation
-- **`create-release-branch.yml`**: Manual workflow to create release branches from main
-- **`create-hotfix-branch.yml`**: Manual workflow to create hotfix branches from latest release tag
+### Release Management
+
+#### Branch Creation
+- **`create-release-branch.yml`**: Creates release branches from main (or specified commit)
+- **`create-hotfix-branch.yml`**: Creates hotfix branches from the latest release tag
 
 #### Release Processing
-- **`create-release-pull-request.yml`**: Runs semantic-release and creates PRs for `release/v*` branches
-- **`create-hotfix-pull-request.yml`**: Creates PRs for `hotfix/v*` branches (no semantic-release)
+- **`create-release-pull-request.yml`**: Automatically runs semantic-release and creates pull requests for release branches
+- **`create-hotfix-release.yml`**: Manual approval workflow for hotfix versioning using semantic-release
 
-#### Production Release & Deploy (`release-and-deploy.yml`)
-- **Triggers**: Pull requests from `release/v*` or `hotfix/v*` branches to main
-- **Environment**: Requires manual approval via "Release" environment
-- **Jobs**:
-  - `create-github-release` (only for release branches, hotfixes require manual release creation)
-  - `deploy` (production deployment)
+#### Production Deployment
+- **`deploy-to-production.yml`**: Manual deployment workflow using git tags
 
-## Release Management Process
+## Release Process
 
-### Creating a Release
-1. **Create Branch**: Go to Actions → "Create Release Branch" → Run workflow
-2. **Make Changes**: Push commits to the generated `release/v*` branch (if needed)
-3. **Auto Processing**: `create-release-pull-request.yml` runs semantic-release and creates PR
-4. **Production Deploy**: PR triggers `release-and-deploy.yml` with manual approval required
-5. **Merge**: Use "Create merge commit" (preserve git tags for deployment)
+### Creating a Regular Release
+
+1. **Create Release Branch**
+   - Go to Actions → "Create Release Branch" → Run workflow
+   - Optionally specify a commit SHA (defaults to main branch tip)
+   - Creates branch named `release/vYYYY-MM-DD-{short-sha}`
+
+2. **Automatic Processing**
+   - Push any additional commits to the release branch if needed
+   - `create-release-pull-request.yml` automatically runs semantic-release
+   - Semantic-release updates version, changelog, and creates git tag
+   - Pull request is automatically created targeting main branch
+
+3. **Deploy to Production**
+   - Use the generated git tag to run `deploy-to-production.yml` workflow
+   - If additional patches are needed, push commits to release branch
+   - New semantic-release run will create updated tag for deployment
 
 ### Creating a Hotfix
-1. **Create Branch**: Go to Actions → "Create Hotfix Branch" → Run workflow
-2. **Make Changes**: Push hotfix commits to the generated `hotfix/v*` branch
-3. **Auto PR**: `create-hotfix-pull-request.yml` creates PR with manual release instructions
-4. **Manual Release**: Create GitHub release before merging (as instructed in PR)
-5. **Production Deploy**: PR triggers `release-and-deploy.yml` with manual approval required
-6. **Merge**: Use "Create merge commit"
+
+1. **Create Hotfix Branch**
+   - Go to Actions → "Create Hotfix Branch" → Run workflow
+   - Creates branch named `hotfix/v{next-patch-version}` from latest release tag
+   - Branch name indicates the target version (e.g., `hotfix/v2.8.1`)
+
+2. **Manual Release Process**
+   - Push hotfix commits to the hotfix branch
+   - Create a pull request manually targeting main branch
+   - Approve the most recent run of `create-hotfix-release.yml` workflow
+   - This runs semantic-release to bump version, update changelog, and create git tag
+
+3. **Deploy to Production**
+   - Use the generated git tag to run `deploy-to-production.yml` workflow
 
 ## Deployment Environments
 
-### Development
+### Development Environment
 - **Trigger**: Automatic on every push to `main` branch
 - **Workflow**: `ci-cd.yml` → `dev-deploy` job
-- **Approval**: None required (automatic after tests pass)
+- **Requirements**: All tests must pass first
+- **Approval**: None (fully automated)
 
-### Production
-- **Trigger**: Pull requests from release/hotfix branches
-- **Workflow**: `release-and-deploy.yml`
-- **Approval**: Manual approval required via "Release" environment
-- **Scope**: Full production deployment with versioned releases
+### Production Environment
+- **Trigger**: Manual execution of `deploy-to-production.yml`
+- **Input**: Requires a git tag (e.g., `v2.8.0`)
+- **Validation**: Ensures tag exists and follows semantic versioning
+- **Scope**: Full production deployment with versioned assets
 
-### adding a test comment here to try to force github workflow to run
+## Key Features
+
+- **Semantic Versioning**: Automatic version bumping based on conventional commits
+- **Path-based Ignoring**: CI/CD skips runs for documentation-only changes
+- **Tag-based Deployment**: Production deployments are tied to specific git tags
+- **Environment Separation**: Clear distinction between dev and production workflows
+- **Manual Approval Gates**: Hotfix releases require manual approval for safety
+- **Asset Management**: Automated Docker builds and S3 asset publishing
