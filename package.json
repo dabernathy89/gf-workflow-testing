@@ -1,6 +1,6 @@
 {
     "name": "gh-workflow-test",
-    "version": "2.11.1",
+    "version": "2.11.2",
     "private": true,
     "type": "module",
     "dependencies": {},
