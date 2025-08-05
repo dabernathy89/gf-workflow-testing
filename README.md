@@ -8,7 +8,7 @@ This repository demonstrates an automated release management system with semanti
 
 #### CI/CD Pipeline (`ci-cd.yml`)
 - **Triggers**: Pull requests to any branch + pushes to `main`
-- **Jobs**: 
+- **Jobs**:
   - `lint`, `unit-test`, `ui-test` (run on all PRs)
   - `dev-deploy` (only runs on pushes to main after tests pass)
 - **Purpose**: Continuous integration testing and automatic development environment deployment
@@ -57,3 +57,5 @@ This repository demonstrates an automated release management system with semanti
 - **Workflow**: `release-and-deploy.yml`
 - **Approval**: Manual approval required via "Release" environment
 - **Scope**: Full production deployment with versioned releases
+
+### adding a test comment here to try to force github workflow to run
