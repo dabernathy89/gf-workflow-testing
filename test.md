@@ -56,6 +56,8 @@
 
 ## Feature V
 
+## Hotfix hotfix/v2.10.1 - oopsie
+
 ## Feature W
 
 ## Feature X
