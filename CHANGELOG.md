@@ -1,3 +1,10 @@
+## [2.8.1](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.8.0...v2.8.1) (2025-08-05)
+
+
+### Bug Fixes
+
+* cleaning up ([2a7e556](https://github.com/dabernathy89/gf-workflow-testing/commit/2a7e5562810d00611c13e1c02cb846258ae29188))
+
 # [2.8.0](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.7.2...v2.8.0) (2025-08-05)
 
 
