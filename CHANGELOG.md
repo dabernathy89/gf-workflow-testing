@@ -1,3 +1,16 @@
+# [2.9.0](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.8.0...v2.9.0) (2025-08-05)
+
+
+### Bug Fixes
+
+* don't auto-create hotfix PR, clean up readme ([e47afa4](https://github.com/dabernathy89/gf-workflow-testing/commit/e47afa4e4a5fd5a560728c7588efed564a9d5ef5))
+
+
+### Features
+
+* feature R ([d00036a](https://github.com/dabernathy89/gf-workflow-testing/commit/d00036aaaffab8843a2d72ba97363fe9c37d5572))
+* feature S ([7827f5a](https://github.com/dabernathy89/gf-workflow-testing/commit/7827f5a64fb503368ddb9793063c2b16c0612074))
+
 # [2.8.0](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.7.2...v2.8.0) (2025-08-05)
 
 
