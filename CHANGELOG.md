@@ -1,3 +1,15 @@
+# [2.13.0](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.12.0...v2.13.0) (2025-08-05)
+
+
+### Bug Fixes
+
+* add step to track latest release in prod branch ([6b423b2](https://github.com/dabernathy89/gf-workflow-testing/commit/6b423b21360b5fc9c2e95cd0ac715357c1d44094))
+
+
+### Features
+
+* Feature AA ([f0437e7](https://github.com/dabernathy89/gf-workflow-testing/commit/f0437e718acab9ccfb817644c9d36c583ea49551))
+
 # [2.12.0](https://github.com/dabernathy89/gf-workflow-testing/compare/v2.11.2...v2.12.0) (2025-08-05)
 
 
