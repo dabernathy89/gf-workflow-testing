@@ -32,7 +32,7 @@ Both processes use semantic versioning and automated deployments while maintaini
 - **`create-hotfix-release.yml`**: Manual approval workflow for hotfix versioning using semantic-release
 
 #### Production Deployment
-- **`deploy-to-production.yml`**: Manual deployment workflow using git tags
+- **`deploy-to-production.yml`**: Manual deployment workflow using git tags, also updates `prod` branch to track deployed version
 
 ## Release Process
 
@@ -51,6 +51,7 @@ Both processes use semantic versioning and automated deployments while maintaini
 
 3. **Deploy to Production**
    - Use the generated git tag to run `deploy-to-production.yml` workflow
+   - Upon successful deployment, the `prod` branch is automatically updated to track the deployed version
    - If additional patches are needed, push commits to release branch
    - New semantic-release run will create updated tag for deployment
 
@@ -69,6 +70,7 @@ Both processes use semantic versioning and automated deployments while maintaini
 
 3. **Deploy to Production**
    - Use the generated git tag to run `deploy-to-production.yml` workflow
+   - Upon successful deployment, the `prod` branch is automatically updated to track the deployed version
 
 ## Deployment Environments
 
@@ -84,6 +86,15 @@ Both processes use semantic versioning and automated deployments while maintaini
 - **Validation**: Ensures tag exists and follows semantic versioning
 - **Scope**: Full production deployment with versioned assets
 
+### Production Branch (`prod`)
+- **Purpose**: Always points to the currently deployed production version
+- **Automation**: Automatically updated as part of `deploy-to-production.yml` workflow
+- **Trigger**: Updates after successful production deployment
+- **Process**:
+  - After successful deployment, fast-forward merges the `prod` branch to the deployed tag
+  - Only updates if the branch isn't already pointing to the deployed version
+- **Benefits**: Provides an accurate reference point for what's actually running in production
+
 ## Key Features
 
 - **Semantic Versioning**: Automatic version bumping based on conventional commits
@@ -92,3 +103,4 @@ Both processes use semantic versioning and automated deployments while maintaini
 - **Environment Separation**: Clear distinction between dev and production workflows
 - **Manual Approval Gates**: Hotfix releases require manual approval for safety
 - **Asset Management**: Automated Docker builds and S3 asset publishing
+- **Prod Branch Automation**: The `prod` branch automatically tracks what's actually deployed to production

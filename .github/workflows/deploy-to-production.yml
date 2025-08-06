@@ -13,6 +13,8 @@ jobs:
   deploy:
     name: Build and Deploy to Production
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Validate git tag
         run: |
@@ -33,6 +35,7 @@ jobs:
         with:
           ref: ${{ inputs.git_tag }}
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify tag exists
         run: |
@@ -122,12 +125,40 @@ jobs:
           echo "📝 Updated production metadata: prod-webapp-meta.json"
           echo "✅ Updated production metadata for version ${VERSION}"
 
+      - name: Update prod branch
+        env:
+          DEPLOYED_TAG: ${{ inputs.git_tag }}
+        run: |
+          echo "🔄 Updating prod branch to track deployed version..."
+
+          # Configure Git
+          git config user.name 'github-actions[bot]'
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Fetch and checkout prod branch
+          git fetch origin prod:prod
+          git checkout prod
+
+          # Check if prod is already pointing to the deployed tag
+          PROD_COMMIT=$(git rev-parse HEAD)
+          TAG_COMMIT=$(git rev-list -n 1 "$DEPLOYED_TAG")
+
+          if [ "$PROD_COMMIT" = "$TAG_COMMIT" ]; then
+            echo "✅ Prod branch is already pointing to deployed tag $DEPLOYED_TAG"
+          else
+            echo "🚀 Fast-forward merging prod branch to $DEPLOYED_TAG..."
+            git merge --ff-only "$DEPLOYED_TAG"
+            git push origin prod
+            echo "✅ Successfully updated prod branch to $DEPLOYED_TAG"
+          fi
+
       - name: Deployment summary
         env:
           VERSION: ${{ steps.get_version.outputs.version }}
         run: |
           echo "🎉 Production deployment completed successfully!"
-          echo "�️ Tag: ${{ inputs.git_tag }}"
-          echo "� Version: ${VERSION}"
+          echo "🏷️ Tag: ${{ inputs.git_tag }}"
+          echo "📦 Version: ${VERSION}"
           echo "🚀 Production deployment: ✅"
+          echo "🌿 Prod branch: Updated to track deployment"
           echo "🌍 Environment updated: Production"
